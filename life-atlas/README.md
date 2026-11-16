@@ -6,6 +6,7 @@ Mã nguồn React gốc không còn, nên các nâng cấp được gắn vào b
 
 - `base.html` – bản đóng gói (Vite/React) trước đợt nâng cấp này.
 - `addon.js` – mã bổ sung, chạy chung phạm vi module với bản đóng gói (dùng lại các hàm đã thu gọn như `iu`, `U5`, `P5`, `Vu`, `X`, `d0`...).
+- `synth.js` – bộ máy luận giải tổng hợp (từng nhà và trang "Tổng hòa lá số").
 - `addon.css` – CSS bổ sung, bao gồm chỉnh giao diện mobile.
 - `build.py` – nối `addon.*` vào `base.html` bằng các phép thay chuỗi có kiểm tra (mỗi chỗ thay phải xuất hiện đúng một lần) và ghi ra `index.html`.
 - `index.html` – bản đã dựng, là bản được đăng.

@@ -50,6 +50,11 @@ for o in ['u.jsx("p",{className:"faint small",children:"Bấm vào một hàng �
           'u.jsx("p",{className:"tip",children:"Nền vũ trụ phía sau trang chỉ để trang trí: chín hành tinh xuất phát từ vị trí thật của chúng lúc bạn mở trang (nhìn từ Trái Đất, theo thứ tự cổ: Mặt Trăng, Sao Thủy, Sao Kim, Mặt Trời, Sao Hỏa, Sao Mộc, Sao Thổ, rồi Rahu và Ketu), sau đó quay nhanh hơn thật để mắt nhìn thấy được. Nó không dùng để đọc lá số."})']:
     assert src.count(o)==1,o[:60]
     src=src.replace(o,'null' if not o.endswith(',') else '')
+# 12. synthesis
+rep('houses:c?[]:(()=>{const g=new Map;return e.houses.map(o=>qk(a,o,g))})()','houses:c?[]:(()=>{const g=new Map;return e.houses.map(o=>LA_wrapHouse(a,o,qk(a,o,g)))})()')
+rep('{id:"ov-common",nav:"Điểm chung",label:"Tổng quan: điểm chung và sức mạnh"},','{id:"ov-common",nav:"Điểm chung",label:"Tổng quan: điểm chung và sức mạnh"},...c?[]:[{id:"ov-synth",nav:"Tổng hòa",label:"Tổng quan: tổng hòa lá số"}],')
+rep('$==="ov-common"?u.jsx(jx,{prepared:a}):','$==="ov-common"?u.jsx(jx,{prepared:a}):$==="ov-synth"?u.jsx(LA_Synth,{prepared:a}):')
+add=add+open('synth.js').read()
 # 8. inject add-on code before root render
 rep('xm.createRoot(document.getElementById("root"))',add+'\nxm.createRoot(document.getElementById("root"))')
 rep('</style>','\n'+css+'</style>')
