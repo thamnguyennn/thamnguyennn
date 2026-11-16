@@ -57,3 +57,44 @@
  .la-saved-wrap{padding:0 1rem}
 }
 @media print{.la-pick,.la-del{display:none!important}.la-gantt{min-width:0}}
+/* ---------- cosmic background ---------- */
+.la-galaxy{position:fixed;left:64%;top:46%;z-index:-4;pointer-events:none;transform:translate(-50%,-50%) rotate(-27deg);opacity:.8;transition:opacity 1.6s var(--ease);animation:la-gal 240s ease-in-out infinite alternate}
+.la-galaxy canvas{display:block;filter:saturate(1.15)}
+.la-galaxy.calm{opacity:.5}
+@media (max-width:760px){.la-galaxy{left:58%;top:30%}.la-galaxy.calm{opacity:.42}}
+:root[data-skin=night] .hero h1,:root[data-skin=night] .hero .lead,:root[data-skin=night] .rhead h1,:root[data-skin=night] .rsub{text-shadow:0 2px 22px rgba(5,7,20,.9),0 0 2px rgba(5,7,20,.6)}
+:root[data-skin=night] .hero-text{position:relative}:root[data-skin=night] .hero-text::before{content:"";position:absolute;inset:-12% -18% -10% -30%;z-index:-1;background:radial-gradient(closest-side,rgba(7,10,23,.62),rgba(7,10,23,0));pointer-events:none}
+@keyframes la-gal{0%{rotate:0deg;scale:1;translate:0 0}50%{rotate:6deg;scale:1.06;translate:1.5% -1%}100%{rotate:-4deg;scale:1.03;translate:-1% 1%}}
+.la-sky{position:fixed;inset:0;z-index:-2;pointer-events:none;overflow:hidden}
+.la-aurora{position:absolute;inset:-20%;background:conic-gradient(from 200deg at 60% 40%,transparent 0deg,rgba(110,90,255,.10) 40deg,transparent 90deg,rgba(60,190,200,.07) 160deg,transparent 220deg,rgba(230,120,200,.08) 290deg,transparent 360deg);filter:blur(40px);animation:la-aur 60s linear infinite;mix-blend-mode:screen}
+@keyframes la-aur{to{rotate:360deg}}
+.la-meteor{position:absolute;width:var(--len);height:1.6px;border-radius:2px;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(214,226,255,.55) 70%,#fff);transform:rotate(var(--ang));transform-origin:100% 50%;opacity:0;animation:la-shoot var(--dur) ease-out forwards;filter:drop-shadow(0 0 6px rgba(190,210,255,.9))}
+.la-meteor::after{content:"";position:absolute;right:-2px;top:-2px;width:5px;height:5px;border-radius:50%;background:#fff;box-shadow:0 0 10px 3px rgba(200,220,255,.9)}
+@keyframes la-shoot{0%{opacity:0;translate:0 0}12%{opacity:1}100%{opacity:0;translate:calc(cos(var(--ang))*420px) calc(sin(var(--ang))*420px)}}
+[data-skin=parchment] .la-galaxy{opacity:.16;filter:sepia(.6) hue-rotate(-15deg) brightness(.7)}
+[data-skin=parchment] .la-aurora{opacity:.35;mix-blend-mode:multiply}
+[data-skin=parchment] .la-meteor{display:none}
+
+@media (prefers-reduced-motion:reduce){.la-galaxy,.la-aurora{animation:none}}
+/* ---------- brighter, more legible type ---------- */
+:root,:root[data-skin=night]{--text:#f5f0e6;--text-dim:#d0d4e8;--text-faint:#a9b0cd;--gold:#e6c88f;--gold-2:#f7e2b4;--line:rgba(220,190,130,.26);--line-soft:rgba(220,190,130,.14);--line-strong:rgba(232,204,146,.6);--surface:rgba(14,19,44,.74);--surface-2:rgba(24,31,66,.86);--nebula-a:rgba(98,80,220,.42);--nebula-b:rgba(150,64,180,.28);--nebula-c:rgba(220,175,110,.16)}
+:root[data-skin=parchment]{--text-dim:#3b4860;--text-faint:#4d5a70}
+body{font-size:1.02rem;line-height:1.7;text-rendering:optimizeLegibility}
+.prose p{line-height:1.78}
+:root[data-skin=night] h1,:root[data-skin=night] h2{text-shadow:0 0 28px rgba(240,210,150,.18)}
+:root[data-skin=night] .card{box-shadow:var(--shadow),inset 0 1px 0 rgba(255,240,210,.06)}
+/* gentle motion on interactive surfaces */
+@media (hover:hover) and (prefers-reduced-motion:no-preference){
+ .la-k,.la-saved-open,.la-block{transition:transform .35s var(--ease),border-color .3s,box-shadow .35s}
+ .la-k:hover,.la-saved-open:hover{transform:translateY(-3px);box-shadow:0 18px 44px rgba(0,0,0,.35),0 0 0 1px var(--line-strong)}
+ .btn.primary{animation:la-glow 4.5s ease-in-out infinite}
+}
+@keyframes la-glow{50%{box-shadow:0 0 0 1px rgba(255,230,180,.25),0 10px 40px rgba(230,200,143,.35)}}
+.la-dial{animation:la-dialin 1.4s var(--ease) both}
+@keyframes la-dialin{from{opacity:0;scale:.85;rotate:-40deg}}
+.la-seg{animation:la-segin .9s var(--ease) both;transform-box:fill-box;transform-origin:left center}
+@keyframes la-segin{from{opacity:0;scale:.2 1}}
+.la-bar i{animation:la-barin 1.2s var(--ease) both;transform-origin:left}
+@keyframes la-barin{from{scale:0 1}}
+@media print{.la-galaxy,.la-sky{display:none!important}}
+:root[data-skin=night] .shimmer{text-shadow:none!important;filter:drop-shadow(0 2px 14px rgba(5,7,20,.85)) drop-shadow(0 0 18px rgba(240,205,140,.25))}
