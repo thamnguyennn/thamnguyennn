@@ -18,7 +18,7 @@
 .la-chip-good{color:var(--good)}.la-chip-mixed{color:var(--mixed)}.la-chip-hard{color:var(--hard)}
 .la-past{opacity:.6}.la-cur{border-color:var(--line-strong)!important}
 .la-milestones,.la-sade{list-style:none;padding:0;margin:.6rem 0;display:grid;gap:.7rem}
-.la-milestones li{display:grid;grid-template-columns:5.2rem 1fr;gap:.8rem;align-items:baseline}
+.la-milestones li{display:grid;grid-template-columns:6.8rem 1fr;gap:.8rem;align-items:baseline}
 .la-ms-date{font-variant-numeric:tabular-nums;color:var(--gold);font-weight:600}
 .la-sade li{padding:.7rem .9rem;border:1px solid var(--line-soft);border-radius:12px}
 .la-sade li.la-cur{background:var(--surface-2)}
@@ -98,3 +98,25 @@ body{font-size:1.02rem;line-height:1.7;text-rendering:optimizeLegibility}
 @keyframes la-barin{from{scale:0 1}}
 @media print{.la-galaxy,.la-sky{display:none!important}}
 :root[data-skin=night] .shimmer{text-shadow:none!important;filter:drop-shadow(0 2px 14px rgba(5,7,20,.85)) drop-shadow(0 0 18px rgba(240,205,140,.25))}
+
+/* transit, 2027, pdf */
+.la-charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;margin:1rem 0}
+.la-chartcard{margin:0;padding:1rem}.la-chartcard figcaption{text-align:center;color:var(--text-dim);font-size:.9rem;margin-top:.4rem}
+.la-chartcard.la-tr{border-color:var(--line-strong)}
+.la-tablewrap{overflow-x:auto;margin:1rem 0}
+.la-table{width:100%;border-collapse:collapse;min-width:560px;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.la-table th,.la-table td{padding:.6rem .75rem;text-align:left;border-bottom:1px solid var(--line-soft);font-size:.92rem}
+.la-table th{color:var(--gold);font-weight:500;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase}
+.la-table td svg{vertical-align:-3px;color:var(--gold)}
+.la-ybars{width:100%;height:auto;display:block}.la-yb.on rect{stroke:var(--gold-2);stroke-width:2}
+.la-months{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:.9rem;margin:1rem 0}
+.la-month{padding:1.1rem 1.25rem;border-top:3px solid var(--line)}.la-month.la-good{border-top-color:var(--good)}.la-month.la-mixed{border-top-color:var(--mixed)}.la-month.la-hard{border-top-color:var(--hard)}
+.la-month.on{box-shadow:0 0 0 2px var(--gold) inset,var(--shadow)}
+.la-month header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}.la-month header b{font-family:var(--font-display);font-size:1.25rem;color:var(--gold-2)}
+.la-month p{margin:.35rem 0;line-height:1.65}.la-tip{color:var(--text-dim);font-style:italic}
+.la-mnotes{margin:.5rem 0 0;padding-left:1.1rem;color:var(--text-dim);font-size:.88rem;display:grid;gap:.25rem}
+html.la-pdf .la-galaxy,html.la-pdf .la-sky,html.la-pdf .starfield,html.la-pdf .nebula,html.la-pdf .grain,html.la-pdf .topbar,html.la-pdf .rnav,html.la-pdf .rhead-actions,html.la-pdf .pager,html.la-pdf .sitefoot,html.la-pdf .skip,html.la-pdf .la-pick,html.la-pdf .daypick{display:none!important}
+html.la-pdf .card{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;box-shadow:none!important;background:#fffdf7!important}
+html.la-pdf .reveal{opacity:1!important;transform:none!important;animation:none!important}
+html.la-pdf body{background:#fbf7ee!important}html.la-pdf .shimmer{filter:none!important;background:none!important;-webkit-text-fill-color:currentColor!important;color:var(--gold)!important;animation:none!important}
+html.la-pdf .rpage{padding-top:1rem}
