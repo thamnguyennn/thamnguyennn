@@ -83,7 +83,7 @@ T2=[('waxing:"Bạn sinh lúc trăng đang đầy dần, nên Mặt Trăng của
 ('Zp="Có {k} hành tinh cùng đứng ở nhà {n} ({tag}). Lá số của bạn dồn nhiều về chuyện {domain}, nên đây là chỗ cuộc đời hay gọi tên bạn."','Zp="Có tới {k} hành tinh cùng hội tụ ở nhà {n} ({tag}). Cả tấm bản đồ dồn trọng tâm về chuyện {domain}: đây là nơi cuộc đời sẽ nhiều lần gọi tên bạn, và cũng là nơi bạn để lại dấu ấn rõ nhất."')]
 for o,nw in T2:
     assert src.count(o)==1,o[:40]; src=src.replace(o,nw)
-add=add+open('feat2.js').read()
+add=add+open('feat2.js').read()+open('feat3.js').read()
 # 8. inject add-on code before root render
 rep('xm.createRoot(document.getElementById("root"))',add+'\nxm.createRoot(document.getElementById("root"))')
 rep('</style>','\n'+css+'</style>')
