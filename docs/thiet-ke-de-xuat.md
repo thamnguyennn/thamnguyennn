@@ -2,6 +2,43 @@
 
 > Đây là bước 1 theo yêu cầu: **chưa viết code**. Anh/chị xem, sửa, rồi duyệt thì tôi mới bắt đầu xây.
 
+
+## ✅ CẬP NHẬT v2 – sau khi nhận mẫu phiếu, bảng giá và câu trả lời (19/11/2026)
+
+**Đã chốt:** Cloudflare Tunnel · sao lưu Google Drive · nhắc lịch gửi tay (mẫu tin) · in A4/A5 · "hóa đơn" = phiếu thu nội bộ · chỉ thuốc thành phẩm · **33 tài khoản** (3 quản lý, 5 lễ tân, 5 bác sĩ, 20 trị liệu viên; + sale).
+
+**Điều chỉnh thiết kế vì mẫu thật khác giả định ban đầu:**
+1. Đây là phòng khám **YHCT – Phục hồi chức năng**, phiếu khám thiên về cơ xương khớp (tư thế, biên độ vận động, chuỗi mạc, nhiệm pháp thần kinh…) cộng phần Tứ chẩn. Phiếu khám lưu **có cấu trúc theo từng mục I–XIII** (tick-box + ô tự do), không chỉ là văn bản.
+2. **Mục V "Sàng lọc an toàn"** là điểm an toàn bệnh nhân quan trọng: kết luận *Tiếp nhận / THẬN TRỌNG / HOÃN-CHUYỂN TUYẾN* sẽ hiện **cảnh báo nổi bật** cho trị liệu viên khi mở buổi điều trị (kèm chống chỉ định đã tick: máy tạo nhịp, có thai, rối loạn đông máu…).
+3. **Liệu trình** (mục X): số buổi, tần suất, **tái lượng giá sau N buổi** → hệ thống nhắc bác sĩ khi đến buổi tái lượng giá.
+4. **Phiếu theo dõi**: mỗi buổi gồm ngày, diễn tiến, **nhiều dòng phương pháp** (mã PP – thời gian – thông số/vùng), người thực hiện, ghi chú. Mã PP: CC, ĐX, SA, XK, TT, HN, TLMM, DĐK/NC, DC. Mỗi thiết bị có gợi ý ô thông số (ĐX: chế độ–tần số–cường độ; SA: MHz–W/cm²–chế độ; XK: tần số–áp lực–số xung; TT: cường độ–tần số; HN: khoảng cách). In ra theo khổ 10 buổi/tờ như mẫu.
+5. **Danh mục dịch vụ** theo menu: 3 **combo** (Cơ bản 500k/45′, Tiêu chuẩn 800k/60–75′, Chuyên sâu 1.300k/100′) và 10 **dịch vụ lẻ** (150k–400k). Combo là một gói gồm các bước thủ thuật; ghi nhận được cả "combo" lẫn "từng kỹ thuật đã làm" để thống kê.
+6. Bác sĩ chỉ kê **thuốc thành phẩm** (mục XIII: tên thuốc + liều/cách dùng).
+
+**Các giả định tôi đang dùng (anh/chị sửa nếu sai):**
+- Kho thuốc: **tồn kho theo số lượng + giá nhập + hạn dùng (không bắt buộc)** – chưa quản lý lô chặt chẽ.
+- Giảm giá: cho phép **giảm giá theo dòng/hóa đơn kèm lý do** (chỉ quản lý duyệt). Hoàn tiền và chuyển nhượng buổi: để giai đoạn sau.
+- Cảnh báo lỗi: **Email** (qua healthchecks.io) và **webhook**; Zalo cần Zalo OA nên làm sau.
+
+**Điểm cần anh/chị làm rõ về mẫu:**
+- Phiếu khám nhảy từ mục **XI sang XIII** – mục **XII** bị thiếu hay cố ý bỏ?
+- Phiếu khám có "Hơ ngải, Điện châm" nhưng **menu không có** (menu có Máy nén ép, Parafin nhưng phiếu khám không có); phiếu theo dõi có mã **DC (Diện chẩn)** nhưng menu cũng không có. Cần thống nhất 1 danh mục thủ thuật + giá.
+- Giá combo là **giá mỗi buổi** hay giá cả liệu trình? Có bán **gói nhiều buổi** trả trước không?
+- Tên miền: Cloudflare Tunnel cần 1 tên miền (vd `khoiphucviet.vn`) đã quản lý trên Cloudflare. Phòng khám có tên miền chưa?
+- Giấy phép hoạt động, địa chỉ, SĐT, hotline in trên phiếu.
+
+## Trạng thái xây dựng
+
+| Giai đoạn | Trạng thái |
+|---|---|
+| 0 – Khung, Docker, đăng nhập + 2FA, phân quyền, nhật ký | ✅ xong, đã kiểm thử |
+| 1 – Lead, lịch hẹn, tiếp đón, hàng đợi | ✅ bản đầu (còn thiếu: sửa/ghép hồ sơ, lịch theo bác sĩ dạng lưới) |
+| Hạ tầng – Docker Compose, sao lưu mã hóa → Google Drive, khôi phục | ✅ sao lưu/khôi phục đã thử trên máy dev; **chưa chạy thử Docker thật & Google Drive** (môi trường này không có Docker) |
+| 2 – Phiếu khám YHCT-PHCN | ⏭ tiếp theo |
+| 3–7 | chưa làm |
+
+---
+
 ## 1. Kiến trúc tổng thể (giải thích dễ hiểu)
 
 ```

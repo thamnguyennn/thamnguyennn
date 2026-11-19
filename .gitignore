@@ -1,0 +1,8 @@
+node_modules
+dist
+.next
+.env
+*.log
+backups/
+docs/mau-goc/
+infra/rclone/

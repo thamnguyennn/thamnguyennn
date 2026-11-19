@@ -1,0 +1,220 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SALE
+  RECEPTION
+  DOCTOR
+  THERAPIST
+  MANAGER
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  BOOKED
+  VISITED
+  LOST
+}
+
+enum AppointmentStatus {
+  BOOKED
+  CONFIRMED
+  CHECKED_IN
+  CANCELLED
+  NO_SHOW
+}
+
+enum EncounterStatus {
+  WAITING       // chờ khám
+  IN_EXAM       // đang khám
+  IN_TREATMENT  // đang điều trị / trị liệu
+  CHECKOUT      // chờ thu ngân
+  DONE
+  CANCELLED
+}
+
+// ───────── Người dùng & bảo mật ─────────
+model User {
+  id                 String    @id @default(uuid())
+  username           String    @unique
+  fullName           String
+  role               Role
+  phone              String?
+  email              String?
+  title              String?   // học hàm/chức danh in trên phiếu (BS, CN, KTV...)
+  passwordHash       String
+  mustChangePassword Boolean   @default(true)
+  totpSecretEnc      String?   // mã hóa AES-256-GCM
+  totpEnabled        Boolean   @default(false)
+  active             Boolean   @default(true)
+  failedLogins       Int       @default(0)
+  lockedUntil        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  sessions AuthSession[]
+}
+
+model AuthSession {
+  id         String   @id @default(uuid())
+  userId     String
+  tokenHash  String   @unique
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  expiresAt  DateTime
+  ip         String?
+  userAgent  String?
+  revokedAt  DateTime?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model AuditLog {
+  id       BigInt   @id @default(autoincrement())
+  at       DateTime @default(now())
+  userId   String?
+  username String?
+  action   String   // LOGIN, LOGIN_FAILED, VIEW, CREATE, UPDATE, ...
+  entity   String?
+  entityId String?
+  ip       String?
+  meta     Json?
+
+  @@index([at])
+  @@index([userId, at])
+  @@index([entity, entityId])
+}
+
+// ───────── Lead / lịch hẹn ─────────
+model LeadSource {
+  id     String  @id @default(uuid())
+  name   String  @unique
+  active Boolean @default(true)
+  leads  Lead[]
+}
+
+model Lead {
+  id         String     @id @default(uuid())
+  fullName   String
+  phone      String
+  sourceId   String?
+  saleId     String?    // người sale phụ trách
+  status     LeadStatus @default(NEW)
+  note       String?
+  patientId  String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  source       LeadSource?   @relation(fields: [sourceId], references: [id])
+  patient      Patient?      @relation(fields: [patientId], references: [id])
+  appointments Appointment[]
+
+  @@index([phone])
+}
+
+// ───────── Bệnh nhân ─────────
+model Patient {
+  id         String    @id @default(uuid())
+  code       String    @unique // KPV-26-000001
+  fullName   String
+  birthYear  Int
+  gender     Gender
+  phone      String
+  address    String?
+  occupation String?
+  note       String?
+  createdAt  DateTime  @default(now())
+  createdById String?
+  updatedAt  DateTime  @updatedAt
+
+  consents     PatientConsent[]
+  leads        Lead[]
+  appointments Appointment[]
+  encounters   Encounter[]
+
+  @@index([phone])
+  @@index([fullName])
+}
+
+model PatientConsent {
+  id          String   @id @default(uuid())
+  patientId   String
+  version     String   // phiên bản văn bản đồng ý
+  purpose     String   // "xử lý dữ liệu cá nhân & dữ liệu sức khỏe"
+  givenAt     DateTime @default(now())
+  recordedById String?
+  method      String   @default("PAPER") // PAPER | SCREEN
+  revokedAt   DateTime?
+
+  patient Patient @relation(fields: [patientId], references: [id])
+
+  @@index([patientId])
+}
+
+model Appointment {
+  id          String            @id @default(uuid())
+  leadId      String?
+  patientId   String?
+  fullName    String            // snapshot tên/SĐT lúc đặt
+  phone       String
+  startAt     DateTime
+  durationMin Int               @default(60)
+  doctorId    String?
+  therapistId String?
+  saleId      String?
+  status      AppointmentStatus @default(BOOKED)
+  note        String?
+  createdById String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  lead       Lead?       @relation(fields: [leadId], references: [id])
+  patient    Patient?    @relation(fields: [patientId], references: [id])
+  encounters Encounter[]
+
+  @@index([startAt])
+  @@index([doctorId, startAt])
+}
+
+// Mỗi lượt đến phòng khám
+model Encounter {
+  id            String          @id @default(uuid())
+  patientId     String
+  appointmentId String?
+  visitNo       Int             // lần khám thứ mấy (tự đếm)
+  visitDate     DateTime        @default(now())
+  queueNo       Int             // số thứ tự trong ngày
+  doctorId      String?
+  therapistId   String?
+  status        EncounterStatus @default(WAITING)
+  checkedInById String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  patient     Patient      @relation(fields: [patientId], references: [id])
+  appointment Appointment? @relation(fields: [appointmentId], references: [id])
+
+  @@index([visitDate])
+  @@index([patientId])
+}
+
+// Bộ đếm để sinh mã hồ sơ / số thứ tự không trùng
+model Counter {
+  key   String @id // vd: "patient:2026", "queue:2026-11-19"
+  value Int    @default(0)
+}

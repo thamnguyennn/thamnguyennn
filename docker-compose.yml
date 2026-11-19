@@ -1,0 +1,66 @@
+# Chạy toàn bộ hệ thống trên mini PC:  docker compose up -d --build
+services:
+  db:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: emr
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: emr
+    volumes: [dbdata:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U emr"], interval: 10s, retries: 5 }
+    # Không publish cổng ra ngoài: chỉ các container khác truy cập được
+
+  api:
+    build: { context: ., dockerfile: apps/api/Dockerfile }
+    restart: always
+    depends_on: { db: { condition: service_healthy } }
+    environment:
+      DATABASE_URL: postgresql://emr:${DB_PASSWORD}@db:5432/emr
+      APP_SECRET: ${APP_SECRET}
+      DATA_KEY: ${DATA_KEY}
+      COOKIE_SECURE: "true"
+      PORT: 4000
+
+  web:
+    build: { context: ., dockerfile: apps/web/Dockerfile }
+    restart: always
+    depends_on: [api]
+
+  # Cổng vào duy nhất trong mạng nội bộ phòng khám (HTTP; HTTPS khi đi qua Cloudflare)
+  proxy:
+    image: caddy:2
+    restart: always
+    ports: ["80:80"]
+    volumes: ["./infra/Caddyfile:/etc/caddy/Caddyfile:ro"]
+    depends_on: [web]
+
+  # Truy cập từ xa: Cloudflare Tunnel, KHÔNG mở cổng router. Bật bằng: docker compose --profile remote up -d
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    profiles: [remote]
+    restart: always
+    command: tunnel --no-autoupdate run
+    environment: { TUNNEL_TOKEN: "${CLOUDFLARE_TUNNEL_TOKEN:-}" }
+    depends_on: [proxy]
+
+  backup:
+    build: ./infra/backup
+    restart: always
+    depends_on: { db: { condition: service_healthy } }
+    environment:
+      PGHOST: db
+      PGUSER: emr
+      PGPASSWORD: ${DB_PASSWORD}
+      PGDATABASE: emr
+      BACKUP_PASSPHRASE: ${BACKUP_PASSPHRASE}
+      RCLONE_REMOTE: ${RCLONE_REMOTE:-gdrive:KPV-EMR-Backup}
+      HEALTHCHECK_URL: ${HEALTHCHECK_BACKUP_URL:-}
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+      KEEP_DAYS: ${KEEP_DAYS:-60}
+    volumes:
+      - ./backups:/backups
+      - ./infra/rclone:/root/.config/rclone   # chứa rclone.conf (đăng nhập Google Drive)
+
+volumes:
+  dbdata:
