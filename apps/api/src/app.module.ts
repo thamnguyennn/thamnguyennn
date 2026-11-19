@@ -12,10 +12,11 @@ import { TreatmentModule } from './treatment/treatment.controller';
 import { PharmacyModule } from './pharmacy/pharmacy.controller';
 import { BillingModule } from './billing/billing.controller';
 import { FollowUpModule } from './followup/followup.controller';
+import { ReportsModule } from './reports/reports.controller';
 import { HealthController } from './health.controller';
 
 @Module({
-  imports: [ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]), PrismaModule, AuditModule, ClinicModule, ExamModule, TreatmentModule, PharmacyModule, BillingModule, FollowUpModule],
+  imports: [ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]), PrismaModule, AuditModule, ClinicModule, ExamModule, TreatmentModule, PharmacyModule, BillingModule, FollowUpModule, ReportsModule],
   controllers: [AuthController, UsersController, HealthController],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

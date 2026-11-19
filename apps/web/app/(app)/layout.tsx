@@ -14,6 +14,7 @@ const NAV: { href: string; label: string; roles: Role[] }[] = [
   { href: '/thuoc', label: 'Thuốc & kho', roles: ['RECEPTION', 'DOCTOR', 'MANAGER'] },
   { href: '/goi', label: 'Gói liệu trình', roles: ['RECEPTION', 'MANAGER', 'DOCTOR'] },
   { href: '/lich-hen', label: 'Khách & Lịch hẹn', roles: ['SALE', 'RECEPTION', 'DOCTOR', 'THERAPIST', 'MANAGER'] },
+  { href: '/bao-cao', label: 'Báo cáo', roles: ['MANAGER'] },
   { href: '/nhan-vien', label: 'Nhân viên & Nhật ký', roles: ['MANAGER'] },
 ];
 

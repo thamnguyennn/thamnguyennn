@@ -37,8 +37,9 @@
 | 2 – Phiếu khám YHCT-PHCN (mục I–XII, tự lưu nháp, ký/khóa, điều chỉnh có lý do, in A4) | ✅ xong, đã kiểm thử (còn: in gọn về 2 trang, đơn thuốc in riêng) |
 | 3 – Liệu trình + Phiếu theo dõi (chỉ định điền sẵn từ phiếu khám, ghi buổi trên điện thoại, đếm buổi, tái lượng giá, in 10 buổi/tờ A4) | ✅ xong, đã kiểm thử |
 | 4 – Thu ngân (phiếu thu nội bộ), gói trả trước, thuốc thành phẩm, đơn thuốc, tồn kho | ✅ xong, đã kiểm thử (dùng dữ liệu MẪU cho thuốc và gói – chờ danh mục thật) |
-| 5 – Nhắc lịch & chăm sóc sau điều trị | ⏭ tiếp theo |
-| 6–7 | chưa làm |
+| 5 – Nhắc lịch & chăm sóc sau điều trị (danh sách tự động, mẫu tin Zalo/gọi, ghi kết quả) | ✅ xong, đã kiểm thử (nội dung lưu ý chăm sóc cần bác sĩ duyệt) |
+| 6 – Báo cáo (doanh thu ròng, dịch vụ, nguồn khách, sale, KTV, bác sĩ, quay lại, công nợ, xuất CSV) | ✅ xong, đã kiểm thử |
+| 7 – Triển khai thật trên mini PC, tập huấn, thẩm định pháp lý | ⏭ cần làm cùng người kỹ thuật tại phòng khám (xem `cai-dat.md`, `doi-chieu-phap-ly.md`) |
 
 ---
 

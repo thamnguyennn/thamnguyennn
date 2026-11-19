@@ -298,6 +298,26 @@ describe('EMR – đăng nhập, phân quyền, tiếp đón', () => {
     await lt.put('/api/followups/templates/lead').send({ body: 'x'.repeat(10) }).expect(403);
   });
 
+  it('báo cáo: doanh thu ròng, theo dịch vụ/nguồn, trị liệu viên, chỉ quản lý xem', async () => {
+    const mgr = agent(); const m = await mgr.post('/api/auth/login').send({ username: 'ql.tam', password: 'Demo@12345' }).expect(200);
+    await mgr.post('/api/auth/2fa/verify').send({ ticket: m.body.ticket, code: generateSync({ secret: mgrSecret }) }).expect(200);
+    const lt = agent(); await lt.post('/api/auth/login').send({ username: 'tl.an', password: 'Demo@12345' });
+    await lt.get('/api/reports/summary').expect(403);
+    await mgr.get('/api/reports/summary?from=2026-13-01').expect(400);
+    await mgr.get('/api/reports/summary?from=2020-01-01&to=2026-01-01').expect(400);       // quá 366 ngày
+    const r = (await mgr.get('/api/reports/summary').expect(200)).body;                      // hôm nay
+    // chỉ còn 1 phiếu hợp lệ: Combo Tiêu chuẩn 800.000 − giảm 100.000; các phiếu đã hủy không tính
+    expect([r.kpi.invoices, r.kpi.revenueNet, r.kpi.collected, r.kpi.discount]).toEqual([1, 700000, 700000, 100000]);
+    expect(r.byService.find((x: any) => x.name === 'Combo Tiêu chuẩn').revenue).toBe(700000);
+    expect(r.byMethod.find((x: any) => x.method === 'CARD').amount).toBe(700000);
+    expect(r.bySource.reduce((a: number, x: any) => a + x.revenue, 0)).toBe(700000);
+    expect(r.byTherapist.find((x: any) => x.name.includes('Vũ Minh')).sessions).toBeGreaterThanOrEqual(2);
+    expect(r.kpi.visits).toBeGreaterThan(5); expect(r.kpi.patients).toBeGreaterThan(3);
+    expect(r.byDay).toHaveLength(1); expect(r.byDay[0].revenue).toBe(700000);
+    expect(r.plans.created).toBeGreaterThanOrEqual(2);
+    expect(r.debts.every((d: any) => d.total > d.paid)).toBe(true);
+  });
+
   it('khóa tài khoản sau 5 lần sai', async () => {
     const ip = { 'X-Forwarded-For': '10.9.9.9' }; // IP khác để không dính giới hạn tốc độ của các test trên
     for (let i = 0; i < 5; i++) await request(http).post('/api/auth/login').set(ip).send({ username: 'kv.huy', password: 'x' }).expect(401);
