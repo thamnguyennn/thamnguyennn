@@ -35,8 +35,9 @@
 | 1 – Lead, lịch hẹn, tiếp đón, hàng đợi | ✅ bản đầu (còn thiếu: sửa/ghép hồ sơ, lịch theo bác sĩ dạng lưới) |
 | Hạ tầng – Docker Compose, sao lưu mã hóa → Google Drive, khôi phục | ✅ sao lưu/khôi phục đã thử trên máy dev; **chưa chạy thử Docker thật & Google Drive** (môi trường này không có Docker) |
 | 2 – Phiếu khám YHCT-PHCN (mục I–XII, tự lưu nháp, ký/khóa, điều chỉnh có lý do, in A4) | ✅ xong, đã kiểm thử (còn: in gọn về 2 trang, đơn thuốc in riêng) |
-| 3 – Liệu trình + Phiếu theo dõi | ⏭ tiếp theo |
-| 4–7 | chưa làm |
+| 3 – Liệu trình + Phiếu theo dõi (chỉ định điền sẵn từ phiếu khám, ghi buổi trên điện thoại, đếm buổi, tái lượng giá, in 10 buổi/tờ A4) | ✅ xong, đã kiểm thử |
+| 4 – Thu ngân + gói trả trước + thuốc + kho | ⏭ tiếp theo |
+| 5–7 | chưa làm |
 
 ---
 

@@ -8,6 +8,7 @@ type Me = { fullName: string; role: Role; mustChangePassword: boolean };
 const NAV: { href: string; label: string; roles: Role[] }[] = [
   { href: '/hom-nay', label: 'Hôm nay / Hàng đợi', roles: ['RECEPTION', 'DOCTOR', 'THERAPIST', 'MANAGER'] },
   { href: '/benh-nhan', label: 'Bệnh nhân & Tiếp đón', roles: ['RECEPTION', 'MANAGER'] },
+  { href: '/lieu-trinh', label: 'Liệu trình', roles: ['RECEPTION', 'DOCTOR', 'THERAPIST', 'MANAGER'] },
   { href: '/lich-hen', label: 'Khách & Lịch hẹn', roles: ['SALE', 'RECEPTION', 'DOCTOR', 'THERAPIST', 'MANAGER'] },
   { href: '/nhan-vien', label: 'Nhân viên & Nhật ký', roles: ['MANAGER'] },
 ];

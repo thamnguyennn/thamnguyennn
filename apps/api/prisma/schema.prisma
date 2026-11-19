@@ -147,6 +147,7 @@ model Patient {
   appointments Appointment[]
   encounters   Encounter[]
   exams        ExamForm[]
+  plans        TreatmentPlan[]
 
   @@index([phone])
   @@index([fullName])
@@ -210,6 +211,7 @@ model Encounter {
   patient     Patient      @relation(fields: [patientId], references: [id])
   appointment Appointment? @relation(fields: [appointmentId], references: [id])
   exam        ExamForm?
+  sessions    TreatmentSession[]
 
   @@index([visitDate])
   @@index([patientId])
@@ -285,4 +287,82 @@ model ExamAmendment {
   exam ExamForm @relation(fields: [examFormId], references: [id])
 
   @@unique([examFormId, version])
+}
+
+// ───────── Liệu trình & phiếu theo dõi điều trị ─────────
+enum PlanStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model TreatmentPlan {
+  id            String     @id @default(uuid())
+  patientId     String
+  encounterId   String?    // lượt khám bác sĩ ra chỉ định
+  examFormId    String?
+  doctorId      String
+  therapistId   String?    // trị liệu viên phụ trách mặc định
+  totalSessions Int
+  frequency     String?    // "3 buổi/tuần"
+  reevalAfter   Int?       // tái lượng giá sau N buổi
+  diagnosis     String?    // chụp lại chẩn đoán in trên phiếu theo dõi
+  note          String?
+  status        PlanStatus @default(ACTIVE)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  patient  Patient            @relation(fields: [patientId], references: [id])
+  items    PlanItem[]
+  sessions TreatmentSession[]
+
+  @@index([patientId, status])
+}
+
+// Thủ thuật được chỉ định trong liệu trình
+model PlanItem {
+  id          String @id @default(uuid())
+  planId      String
+  serviceCode String
+  region      String? // vùng/huyệt vị điều trị
+  note        String?
+
+  plan TreatmentPlan @relation(fields: [planId], references: [id])
+
+  @@index([planId])
+}
+
+// Một buổi điều trị = một dòng trong phiếu theo dõi
+model TreatmentSession {
+  id            String   @id @default(uuid())
+  planId        String
+  encounterId   String?
+  sessionNo     Int
+  date          DateTime @default(now())
+  progress      String?  // diễn tiến
+  note          String?  // ghi chú (phản ứng, lưu ý)
+  adverse       Boolean  @default(false) // có phản ứng bất thường
+  performedById String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  plan      TreatmentPlan   @relation(fields: [planId], references: [id])
+  encounter Encounter?      @relation(fields: [encounterId], references: [id])
+  lines     TreatmentLine[]
+
+  @@unique([planId, sessionNo])
+}
+
+// Mỗi phương pháp thực hiện trong buổi: PP | TG | thông số/vùng
+model TreatmentLine {
+  id          String @id @default(uuid())
+  sessionId   String
+  serviceCode String
+  minutes     Int?
+  detail      String? // thông số máy / vùng
+  sort        Int     @default(0)
+
+  session TreatmentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
 }

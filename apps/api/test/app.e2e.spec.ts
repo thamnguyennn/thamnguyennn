@@ -9,8 +9,9 @@ import { AppModule } from '../src/app.module';
 import { decrypt } from '../src/common/crypto';
 
 describe('EMR – đăng nhập, phân quyền, tiếp đón', () => {
+  let docSecret = '';
   let app: NestExpressApplication; let http: any; const db = new PrismaClient();
-  const agent = () => request.agent(http);
+  let ipn = 0; const agent = () => request.agent(http).set('X-Forwarded-For', `10.1.${++ipn}.1`);
 
   beforeAll(async () => {
     process.env.ADMIN_PASSWORD = 'Admin12345x';
@@ -90,6 +91,7 @@ describe('EMR – đăng nhập, phân quyền, tiếp đón', () => {
     const doc = agent();
     const l = await doc.post('/api/auth/login').send({ username: 'bs.an', password: 'Demo@12345' }).expect(200);
     const sec = await doc.post('/api/auth/2fa/setup').send({ ticket: l.body.ticket }).expect(200);
+    docSecret = sec.body.secret;
     await doc.post('/api/auth/2fa/verify').send({ ticket: l.body.ticket, code: generateSync({ secret: sec.body.secret }) }).expect(200);
 
     const lt = agent(); await lt.post('/api/auth/login').send({ username: 'tl.hoa', password: 'Demo@12345' });
@@ -128,6 +130,53 @@ describe('EMR – đăng nhập, phân quyền, tiếp đón', () => {
     expect(after.effective.reason).toBe('Đau vai gáy 3 tuần');      // bản hiệu lực là bản điều chỉnh
     expect(after.amendments).toHaveLength(1);
     expect(await db.auditLog.count({ where: { action: { in: ['SIGN', 'AMEND'] } } })).toBe(2);
+  });
+
+  it('liệu trình: chỉ định → trị liệu viên ghi buổi → đếm buổi, cảnh báo DEFER, khóa sửa, phân quyền', async () => {
+    const doc = agent();
+    const l = await doc.post('/api/auth/login').send({ username: 'bs.an', password: 'Demo@12345' }).expect(200);
+    await doc.post('/api/auth/2fa/verify').send({ ticket: l.body.ticket, code: generateSync({ secret: docSecret }) }).expect(200);
+    const lt = agent(); await lt.post('/api/auth/login').send({ username: 'tl.hoa', password: 'Demo@12345' });
+    const kv = agent(); await kv.post('/api/auth/login').send({ username: 'kv.minh', password: 'Demo@12345' });
+    const p = (await lt.post('/api/patients').send({ fullName: 'Phạm Liệu Trình', birthYear: 1990, gender: 'FEMALE', phone: '0933444555', consent: true }).expect(201)).body;
+    const enc = (await lt.post('/api/encounters/check-in').send({ patientId: p.id }).expect(201)).body;
+    const ex1 = (await doc.put(`/api/exams/by-encounter/${enc.id}`).send({ data: { reason: 'Đau cổ', screening: { conclusion: 'DEFER' }, diagnosis: { modernMain: 'M54.2' } }, rev: 0 }).expect(200)).body;
+
+    await kv.post('/api/plans').send({}).expect(403);
+    await doc.post('/api/plans').send({ encounterId: enc.id, totalSessions: 2, items: [{ serviceCode: 'XYZ' }] }).expect(400); // không có trong bảng giá
+    const plan = (await doc.post('/api/plans').send({ encounterId: enc.id, totalSessions: 2, reevalAfter: 1, frequency: '2 buổi/tuần', items: [{ serviceCode: 'CC', region: 'Cổ gáy' }, { serviceCode: 'DX' }] }).expect(201)).body;
+
+    const line = { serviceCode: 'CC', minutes: 20, detail: 'Cổ gáy' };
+    const need = await kv.post(`/api/plans/${plan.id}/sessions`).send({ lines: [line] }).expect(409);
+    expect(need.body.code).toBe('SCREENING_DEFER');                                   // phải xác nhận rủi ro
+    await lt.post(`/api/plans/${plan.id}/sessions`).send({ lines: [line], acknowledgeRisk: true }).expect(403); // lễ tân không ghi được
+    await kv.post(`/api/plans/${plan.id}/sessions`).send({ lines: [{ serviceCode: 'ZZZ' }], acknowledgeRisk: true }).expect(400);
+    const s1 = (await kv.post(`/api/plans/${plan.id}/sessions`).send({ lines: [line, { serviceCode: 'DX', minutes: 10, detail: 'TENS 80Hz' }], progress: 'Đỡ đau', acknowledgeRisk: true }).expect(201)).body;
+    expect(s1.sessionNo).toBe(1);
+    expect((await db.encounter.findUnique({ where: { id: enc.id } }))!.status).toBe('CHECKOUT');
+    await kv.post(`/api/plans/${plan.id}/sessions`).send({ lines: [line], acknowledgeRisk: true }).expect(409); // lượt khám này đã ghi
+
+    let d = (await kv.get(`/api/plans/${plan.id}`).expect(200)).body;
+    expect([d.used, d.remaining, d.reevalDue, d.safety.conclusion]).toEqual([1, 1, true, 'DEFER']);
+    await kv.patch(`/api/plans/${plan.id}/sessions/${s1.id}`).send({ lines: [line], progress: 'Đỡ đau nhiều' }).expect(200);   // cùng ngày: sửa được
+    await db.treatmentSession.update({ where: { id: s1.id }, data: { createdAt: new Date(Date.now() - 2 * 86400000) } });
+    await kv.patch(`/api/plans/${plan.id}/sessions/${s1.id}`).send({ lines: [line] }).expect(403);                              // qua ngày: khóa
+
+    // buổi 2 ở lượt khám mới → đủ số buổi → liệu trình hoàn tất
+    await lt.patch(`/api/encounters/${enc.id}/status`).send({ status: 'DONE' });
+    const enc2 = (await lt.post('/api/encounters/check-in').send({ patientId: p.id }).expect(201)).body;
+    const q = (await kv.get('/api/encounters/queue').expect(200)).body.find((e: any) => e.id === enc2.id);
+    expect(q.plan).toMatchObject({ id: plan.id, used: 1, total: 2 });
+    const s2 = (await kv.post(`/api/plans/${plan.id}/sessions`).send({ lines: [line], acknowledgeRisk: true }).expect(201)).body;
+    expect(s2.sessionNo).toBe(2);
+    expect((await db.treatmentPlan.findUnique({ where: { id: plan.id } }))!.status).toBe('COMPLETED');
+    await kv.post(`/api/plans/${plan.id}/sessions`).send({ lines: [line], acknowledgeRisk: true }).expect(409);
+
+    // lễ tân chỉ thấy tiến độ, không thấy chẩn đoán/nội dung
+    const rl = (await lt.get('/api/plans?status=COMPLETED').expect(200)).body.find((x: any) => x.id === plan.id);
+    expect(rl.used).toBe(2); expect(rl.diagnosis).toBeUndefined();
+    await lt.get(`/api/plans/${plan.id}`).expect(403);
+    await db.treatmentPlan.findUnique({ where: { id: plan.id } });
   });
 
   it('khóa tài khoản sau 5 lần sai', async () => {

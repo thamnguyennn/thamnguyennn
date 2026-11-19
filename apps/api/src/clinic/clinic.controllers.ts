@@ -171,13 +171,17 @@ export class EncountersController {
   // Hàng đợi trong ngày. Bác sĩ chỉ thấy khách của mình (+ chưa phân công) nếu ?mine=1
   @Roles('RECEPTION', 'DOCTOR', 'THERAPIST', 'MANAGER')
   @Get('queue')
-  queue(@Query('day') day = vnDay(), @Query('mine') mine?: string, @CurrentUser() u?: AuthUser) {
-    const m = mine === '1' && u ? (u.role === 'DOCTOR' ? { OR: [{ doctorId: u.id }, { doctorId: null }] } : u.role === 'THERAPIST' ? { therapistId: u.id } : {}) : {};
-    return this.prisma.encounter.findMany({
+  async queue(@Query('day') day = vnDay(), @Query('mine') mine?: string, @CurrentUser() u?: AuthUser) {
+    const m = mine === '1' && u ? (u.role === 'DOCTOR' ? { OR: [{ doctorId: u.id }, { doctorId: null }] } : u.role === 'THERAPIST' ? { OR: [{ therapistId: u.id }, { therapistId: null }] } : {}) : {};
+    const rows = await this.prisma.encounter.findMany({
       where: { visitDate: dayRange(day), status: { not: 'CANCELLED' }, ...m },
       include: { patient: { select: { code: true, fullName: true, birthYear: true, gender: true, phone: true } }, exam: { select: { status: true, screening: true } } },
       orderBy: { queueNo: 'asc' },
     });
+    // Liệu trình đang chạy của từng khách (để trị liệu viên bấm thẳng vào ghi buổi)
+    const plans = await this.prisma.treatmentPlan.findMany({ where: { patientId: { in: rows.map((r) => r.patientId) }, status: 'ACTIVE' }, select: { id: true, patientId: true, totalSessions: true, _count: { select: { sessions: true } } } });
+    const byPatient = Object.fromEntries(plans.map((p) => [p.patientId, { id: p.id, total: p.totalSessions, used: p._count.sessions }]));
+    return rows.map((r) => ({ ...r, plan: byPatient[r.patientId] ?? null }));
   }
 
   @Roles('RECEPTION', 'DOCTOR', 'THERAPIST', 'MANAGER')

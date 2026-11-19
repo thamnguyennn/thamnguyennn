@@ -44,7 +44,7 @@ export class ExamController {
     const therapist = enc.therapistId ? await this.prisma.user.findUnique({ where: { id: enc.therapistId }, select: { fullName: true } }) : null;
     const assignedDoctor = enc.doctorId ? await this.prisma.user.findUnique({ where: { id: enc.doctorId }, select: { fullName: true } }) : null;
     return {
-      encounter: { id: enc.id, visitNo: enc.visitNo, visitDate: enc.visitDate, status: enc.status },
+      encounter: { id: enc.id, visitNo: enc.visitNo, visitDate: enc.visitDate, status: enc.status, therapistId: enc.therapistId, doctorId: enc.doctorId },
       patient: { id: enc.patient.id, code: enc.patient.code, fullName: enc.patient.fullName, birthYear: enc.patient.birthYear, gender: enc.patient.gender, phone: enc.patient.phone, address: enc.patient.address, occupation: enc.patient.occupation },
       doctorName: assignedDoctor?.fullName ?? null, therapistName: therapist?.fullName ?? null,
       exam: exam && { id: exam.id, status: exam.status, rev: exam.rev, screening: exam.screening, signedAt: exam.signedAt, signedBy: doctor, data: exam.data, amendments: exam.amendments, effective: effective(exam) },

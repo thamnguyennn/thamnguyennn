@@ -57,6 +57,7 @@ export default function ExamPage() {
       <div className="row" style={{ alignItems: 'center' }}>
         <h1 style={{ flex: 3 }}>Phiếu khám ngoại trú</h1>
         <div style={{ textAlign: 'right' }}>
+          {me?.role === 'DOCTOR' && <Link href={`/lieu-trinh/moi?enc=${id}`}><button style={{ marginRight: 6 }}>Chỉ định liệu trình</button></Link>}
           <Link href={`/kham/${id}/in`} target="_blank"><button className="sec">In phiếu</button></Link>
         </div>
       </div>

@@ -11,8 +11,9 @@ const NEXT: Record<string, { to: string; label: string }[]> = {
 };
 
 export default function Today() {
-  const [rows, setRows] = useState<any[]>([]); const [mine, setMine] = useState(true); const [err, setErr] = useState('');
+  const [me, setMe] = useState<any>(null); const [rows, setRows] = useState<any[]>([]); const [mine, setMine] = useState(true); const [err, setErr] = useState('');
   const load = useCallback(() => api(`/encounters/queue?mine=${mine ? 1 : 0}`).then(setRows).catch((e) => setErr(e.message)), [mine]);
+  useEffect(() => { api('/auth/me').then(setMe); }, []);
   useEffect(() => { load(); const t = setInterval(load, 15000); return () => clearInterval(t); }, [load]);
   const move = async (id: string, status: string) => { await api(`/encounters/${id}/status`, { method: 'PATCH', body: { status } }); load(); };
   return (
@@ -28,7 +29,9 @@ export default function Today() {
               <td><b>{r.queueNo}</b></td><td>{r.patient.code}</td><td>{r.patient.fullName}</td><td>{r.patient.birthYear}</td><td>{r.visitNo}</td>
               <td><span className={`badge ${r.status}`}>{STATUS_LABEL[r.status]}</span></td>
               <td>{r.exam?.screening === 'CAUTION' ? <span title="Thận trọng khi điều trị">⚠️ Thận trọng</span> : r.exam?.screening === 'DEFER' ? <b style={{ color: 'var(--err)' }}>⛔ Hoãn/chuyển</b> : ''}</td>
-              <td><Link href={`/kham/${r.id}`}><button className="sec" style={{ marginRight: 6 }}>Phiếu khám</button></Link>{(NEXT[r.status] ?? []).map((n) => <button key={n.to} className="sec" style={{ marginRight: 6 }} onClick={() => move(r.id, n.to)}>{n.label}</button>)}</td>
+              <td>{me?.role !== 'RECEPTION' && me?.role !== 'THERAPIST' && <Link href={`/kham/${r.id}`}><button className="sec" style={{ marginRight: 6 }}>Phiếu khám</button></Link>}
+                {me?.role === 'THERAPIST' && (r.plan ? <Link href={`/lieu-trinh/${r.plan.id}?enc=${r.id}`}><button style={{ marginRight: 6 }}>Điều trị ({r.plan.used}/{r.plan.total})</button></Link> : <span className="mut">Chưa có liệu trình </span>)}
+                {r.plan && me?.role !== 'THERAPIST' && <span className="badge" style={{ marginRight: 6 }}>Liệu trình {r.plan.used}/{r.plan.total}</span>}{(NEXT[r.status] ?? []).map((n) => <button key={n.to} className="sec" style={{ marginRight: 6 }} onClick={() => move(r.id, n.to)}>{n.label}</button>)}</td>
             </tr>
           ))}
           {!rows.length && <tr><td colSpan={8} className="mut">Chưa có khách trong hàng đợi.</td></tr>}
