@@ -175,7 +175,7 @@ export class EncountersController {
     const m = mine === '1' && u ? (u.role === 'DOCTOR' ? { OR: [{ doctorId: u.id }, { doctorId: null }] } : u.role === 'THERAPIST' ? { therapistId: u.id } : {}) : {};
     return this.prisma.encounter.findMany({
       where: { visitDate: dayRange(day), status: { not: 'CANCELLED' }, ...m },
-      include: { patient: { select: { code: true, fullName: true, birthYear: true, gender: true, phone: true } } },
+      include: { patient: { select: { code: true, fullName: true, birthYear: true, gender: true, phone: true } }, exam: { select: { status: true, screening: true } } },
       orderBy: { queueNo: 'asc' },
     });
   }

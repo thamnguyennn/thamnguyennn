@@ -29,3 +29,4 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px 8px;
 .err{color:var(--err);margin:8px 0}.ok{color:var(--ok)}.mut{color:var(--mut)}
 .center{max-width:380px;margin:8vh auto;padding:0 16px}.center img{width:150px;display:block;margin:0 auto 10px}
 .qr{display:block;margin:10px auto;width:200px}
+@media print{.side,.top{display:none!important}.main{padding:0;max-width:none}body{background:#fff}}

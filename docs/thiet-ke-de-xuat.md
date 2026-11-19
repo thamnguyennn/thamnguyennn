@@ -21,7 +21,7 @@
 - Cảnh báo lỗi: **Email** (qua healthchecks.io) và **webhook**; Zalo cần Zalo OA nên làm sau.
 
 **Điểm cần anh/chị làm rõ về mẫu:**
-- Phiếu khám nhảy từ mục **XI sang XIII** – mục **XII** bị thiếu hay cố ý bỏ?
+- ~~Mục XII bị thiếu~~ → đã chốt: là mục thiếu trong mẫu, hệ thống đánh số lại liên tục I–XII (XII = Điều trị thuốc).
 - Phiếu khám có "Hơ ngải, Điện châm" nhưng **menu không có** (menu có Máy nén ép, Parafin nhưng phiếu khám không có); phiếu theo dõi có mã **DC (Diện chẩn)** nhưng menu cũng không có. Cần thống nhất 1 danh mục thủ thuật + giá.
 - Giá combo là **giá mỗi buổi** hay giá cả liệu trình? Có bán **gói nhiều buổi** trả trước không?
 - Tên miền: Cloudflare Tunnel cần 1 tên miền (vd `khoiphucviet.vn`) đã quản lý trên Cloudflare. Phòng khám có tên miền chưa?
@@ -34,8 +34,9 @@
 | 0 – Khung, Docker, đăng nhập + 2FA, phân quyền, nhật ký | ✅ xong, đã kiểm thử |
 | 1 – Lead, lịch hẹn, tiếp đón, hàng đợi | ✅ bản đầu (còn thiếu: sửa/ghép hồ sơ, lịch theo bác sĩ dạng lưới) |
 | Hạ tầng – Docker Compose, sao lưu mã hóa → Google Drive, khôi phục | ✅ sao lưu/khôi phục đã thử trên máy dev; **chưa chạy thử Docker thật & Google Drive** (môi trường này không có Docker) |
-| 2 – Phiếu khám YHCT-PHCN | ⏭ tiếp theo |
-| 3–7 | chưa làm |
+| 2 – Phiếu khám YHCT-PHCN (mục I–XII, tự lưu nháp, ký/khóa, điều chỉnh có lý do, in A4) | ✅ xong, đã kiểm thử (còn: in gọn về 2 trang, đơn thuốc in riêng) |
+| 3 – Liệu trình + Phiếu theo dõi | ⏭ tiếp theo |
+| 4–7 | chưa làm |
 
 ---
 

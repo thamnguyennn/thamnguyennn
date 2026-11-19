@@ -146,6 +146,7 @@ model Patient {
   leads        Lead[]
   appointments Appointment[]
   encounters   Encounter[]
+  exams        ExamForm[]
 
   @@index([phone])
   @@index([fullName])
@@ -208,6 +209,7 @@ model Encounter {
 
   patient     Patient      @relation(fields: [patientId], references: [id])
   appointment Appointment? @relation(fields: [appointmentId], references: [id])
+  exam        ExamForm?
 
   @@index([visitDate])
   @@index([patientId])
@@ -217,4 +219,70 @@ model Encounter {
 model Counter {
   key   String @id // vd: "patient:2026", "queue:2026-11-19"
   value Int    @default(0)
+}
+
+// ───────── Danh mục dịch vụ / bảng giá ─────────
+model Service {
+  id          String  @id @default(uuid())
+  code        String  @unique  // CC, DX, SA, XK, TT, HN, NE, PF, TLMM, DDK, COMBO_CB...
+  name        String
+  kind        String  // COMBO | SINGLE
+  price       Int     // VNĐ / buổi
+  durationMin Int
+  durationMax Int?
+  unitNote    String? // "01 vùng", "2000 xung/01 vùng"...
+  description String?
+  sortOrder   Int     @default(0)
+  active      Boolean @default(true)
+}
+
+// Danh mục ICD-10 (nhập từ danh mục chính thức của Bộ Y tế)
+model Icd10 {
+  code String @id
+  name String
+
+  @@index([name])
+}
+
+// ───────── Phiếu khám ─────────
+enum ExamStatus {
+  DRAFT
+  SIGNED
+}
+
+model ExamForm {
+  id          String     @id @default(uuid())
+  encounterId String     @unique
+  patientId   String
+  data        Json       // nội dung phiếu theo từng mục I–XII
+  status      ExamStatus @default(DRAFT)
+  rev         Int        @default(1) // chống ghi đè khi 2 người cùng mở
+  screening   String?    // ACCEPT | CAUTION | DEFER (tách riêng để hiện cảnh báo ở hàng đợi)
+  createdById String?
+  updatedById String?
+  signedById  String?
+  signedAt    DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  encounter  Encounter       @relation(fields: [encounterId], references: [id])
+  patient    Patient         @relation(fields: [patientId], references: [id])
+  amendments ExamAmendment[]
+
+  @@index([patientId])
+}
+
+// Phiếu đã ký không sửa đè: mọi chỉnh sửa là một bản điều chỉnh có lý do
+model ExamAmendment {
+  id         String   @id @default(uuid())
+  examFormId String
+  version    Int
+  reason     String
+  data       Json     // toàn bộ nội dung sau điều chỉnh
+  byId       String
+  at         DateTime @default(now())
+
+  exam ExamForm @relation(fields: [examFormId], references: [id])
+
+  @@unique([examFormId, version])
 }

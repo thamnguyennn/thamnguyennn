@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { api, STATUS_LABEL } from '@/lib/api';
 
 const NEXT: Record<string, { to: string; label: string }[]> = {
@@ -20,16 +21,17 @@ export default function Today() {
       <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}><input type="checkbox" style={{ width: 'auto' }} checked={mine} onChange={(e) => setMine(e.target.checked)} /> Chỉ khách của tôi (và chưa phân công)</label>
       {err && <div className="err">{err}</div>}
       <div className="card tbl"><table>
-        <thead><tr><th>STT</th><th>Mã HS</th><th>Họ tên</th><th>Năm sinh</th><th>Lần khám</th><th>Trạng thái</th><th></th></tr></thead>
+        <thead><tr><th>STT</th><th>Mã HS</th><th>Họ tên</th><th>Năm sinh</th><th>Lần khám</th><th>Trạng thái</th><th>An toàn</th><th></th></tr></thead>
         <tbody>
           {rows.map((r) => (
             <tr key={r.id}>
               <td><b>{r.queueNo}</b></td><td>{r.patient.code}</td><td>{r.patient.fullName}</td><td>{r.patient.birthYear}</td><td>{r.visitNo}</td>
               <td><span className={`badge ${r.status}`}>{STATUS_LABEL[r.status]}</span></td>
-              <td>{(NEXT[r.status] ?? []).map((n) => <button key={n.to} className="sec" style={{ marginRight: 6 }} onClick={() => move(r.id, n.to)}>{n.label}</button>)}</td>
+              <td>{r.exam?.screening === 'CAUTION' ? <span title="Thận trọng khi điều trị">⚠️ Thận trọng</span> : r.exam?.screening === 'DEFER' ? <b style={{ color: 'var(--err)' }}>⛔ Hoãn/chuyển</b> : ''}</td>
+              <td><Link href={`/kham/${r.id}`}><button className="sec" style={{ marginRight: 6 }}>Phiếu khám</button></Link>{(NEXT[r.status] ?? []).map((n) => <button key={n.to} className="sec" style={{ marginRight: 6 }} onClick={() => move(r.id, n.to)}>{n.label}</button>)}</td>
             </tr>
           ))}
-          {!rows.length && <tr><td colSpan={7} className="mut">Chưa có khách trong hàng đợi.</td></tr>}
+          {!rows.length && <tr><td colSpan={8} className="mut">Chưa có khách trong hàng đợi.</td></tr>}
         </tbody>
       </table></div>
       <p className="mut">Phiếu khám YHCT, chỉ định và phiếu theo dõi sẽ mở từ đây ở các giai đoạn sau.</p>

@@ -7,10 +7,11 @@ import { AuthGuard } from './common/auth.guard';
 import { AuthController } from './auth/auth.controller';
 import { UsersController } from './users/users.controller';
 import { ClinicModule } from './clinic/clinic.module';
+import { ExamModule } from './exam/exam.controller';
 import { HealthController } from './health.controller';
 
 @Module({
-  imports: [ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]), PrismaModule, AuditModule, ClinicModule],
+  imports: [ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]), PrismaModule, AuditModule, ClinicModule, ExamModule],
   controllers: [AuthController, UsersController, HealthController],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
