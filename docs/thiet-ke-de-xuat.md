@@ -1,0 +1,146 @@
+# Đề xuất thiết kế EMR Phòng khám YHCT (bản để duyệt)
+
+> Đây là bước 1 theo yêu cầu: **chưa viết code**. Anh/chị xem, sửa, rồi duyệt thì tôi mới bắt đầu xây.
+
+## 1. Kiến trúc tổng thể (giải thích dễ hiểu)
+
+```
+ Điện thoại / Laptop / Máy bàn (trình duyệt)
+            │  (qua Tailscale hoặc Cloudflare Tunnel – KHÔNG mở cổng Internet)
+            ▼
+ ┌─────────── Mini PC tại phòng khám (Docker) ───────────┐
+ │  Caddy (HTTPS)  →  Web (Next.js)  →  API (NestJS)     │
+ │                                         │             │
+ │                                    PostgreSQL         │
+ │                                    Thư mục file (ảnh KQ xét nghiệm) │
+ │  Dịch vụ sao lưu: mỗi đêm → nén → mã hóa → đẩy cloud  │
+ │  Dịch vụ giám sát: lỗi sao lưu / mất kết nối → báo Zalo/Email │
+ └───────────────────────────────────────────────────────┘
+                    │ (mã hóa, chỉ gửi ra)
+                    ▼
+        Cloud lưu bản sao lưu (Backblaze B2 / Google Drive / S3)
+```
+
+**Đề xuất chọn:**
+- Truy cập từ xa: **Tailscale** cho nhân viên (đơn giản nhất, miễn phí tới 3 người dùng, trả phí ~6$/người/tháng với team lớn hơn) hoặc **Cloudflare Tunnel** (nhân viên chỉ cần mở một địa chỉ web, không cài app). Với 15 người dùng cả điện thoại, tôi **nghiêng về Cloudflare Tunnel + Cloudflare Access** (đăng nhập email) vì nhân viên không phải cài gì. → *Cần anh/chị chọn.*
+- Sao lưu: `pg_dump` hằng đêm + `restic`/`rclone` mã hóa đẩy lên **Backblaze B2** (rẻ, ~vài chục nghìn đồng/tháng). Có sách hướng dẫn khôi phục từng bước và **bài kiểm tra khôi phục** mỗi tháng.
+- Mini PC: khuyến nghị ≥ 16GB RAM, SSD 512GB, kèm **UPS** (bộ lưu điện) – tránh hỏng DB khi mất điện.
+- Cảnh báo: gửi qua **Zalo OA/Telegram/Email** (anh/chị chọn) khi sao lưu thất bại hoặc máy chủ mất kết nối (dùng dịch vụ giám sát bên ngoài kiểu Uptime Kuma/Healthchecks.io để biết cả khi *mini PC tắt hẳn*).
+
+## 2. Vai trò & quyền
+
+| Chức năng | Sale | Lễ tân | Bác sĩ | Y sĩ/TLV | Quản lý |
+|---|:-:|:-:|:-:|:-:|:-:|
+| Lead, lịch hẹn | ✅ | xem/sửa | xem lịch mình | xem lịch mình | ✅ |
+| Thông tin hành chính BN | tên/SĐT | ✅ | xem | xem tối thiểu | ✅ |
+| Nội dung bệnh án | ❌ | ❌ (chỉ in) | ✅ | chỉ định được giao | ✅ xem |
+| Phiếu theo dõi điều trị | ❌ | xem tiến độ buổi | ✅ | ✅ ghi | ✅ |
+| Thu ngân, bán thuốc | ❌ | ✅ | kê đơn | ❌ | ✅ |
+| Báo cáo / danh mục / nhân sự | ❌ | ❌ | ❌ | ❌ | ✅ |
+
+Bảo mật: đăng nhập 2 lớp (TOTP – app Google Authenticator; bắt buộc với bác sĩ/quản lý), nhật ký truy cập (ai xem hồ sơ nào, lúc nào), tự đăng xuất khi không dùng, mã hóa đĩa mini PC (LUKS) + mã hóa sao lưu + HTTPS.
+
+## 3. Sơ đồ dữ liệu (rút gọn)
+
+```mermaid
+erDiagram
+  PATIENT ||--o{ LEAD : "đến từ"
+  PATIENT ||--o{ APPOINTMENT : có
+  PATIENT ||--o{ ENCOUNTER : "mỗi lượt khám"
+  PATIENT ||--o{ CONSENT : "đồng ý xử lý dữ liệu"
+  LEAD }o--|| SOURCE : "nguồn"
+  APPOINTMENT }o--o| ENCOUNTER : "check-in thành"
+  ENCOUNTER ||--|| EXAM_FORM : "phiếu khám YHCT"
+  ENCOUNTER ||--o{ LAB_ORDER : "xét nghiệm gửi ngoài"
+  LAB_ORDER ||--o{ LAB_RESULT : "kết quả/ảnh đính kèm"
+  ENCOUNTER ||--o{ TREATMENT_PLAN : "liệu trình"
+  TREATMENT_PLAN ||--o{ PLAN_ITEM : "thủ thuật × số buổi"
+  PLAN_ITEM }o--|| SERVICE : "danh mục/bảng giá"
+  TREATMENT_PLAN ||--o{ SESSION : "buổi điều trị"
+  SESSION ||--|| SESSION_NOTE : "phiếu theo dõi"
+  ENCOUNTER ||--o{ PRESCRIPTION : "đơn thuốc"
+  PRESCRIPTION ||--o{ PRESCRIPTION_LINE : ""
+  PRESCRIPTION_LINE }o--|| PRODUCT : "thuốc thành phẩm"
+  PRODUCT ||--o{ STOCK_MOVEMENT : "nhập/xuất kho"
+  ENCOUNTER ||--o{ INVOICE : "thu ngân"
+  INVOICE ||--o{ INVOICE_LINE : ""
+  INVOICE ||--o{ PAYMENT : ""
+  TREATMENT_PLAN ||--o| PACKAGE : "gói liệu trình trả trước"
+  PATIENT ||--o{ FOLLOWUP_TASK : "nhắc lịch / chăm sóc"
+  EXAM_FORM ||--o{ AMENDMENT : "bản điều chỉnh sau khi ký"
+  USER ||--o{ AUDIT_LOG : ""
+```
+
+**Các điểm thiết kế quan trọng:**
+1. **Mã hồ sơ** tự sinh dạng `YHCT-26-000123` (năm + số tăng dần), không trùng. Chống trùng bệnh nhân: cảnh báo khi trùng SĐT + năm sinh.
+2. **Lần khám thứ mấy** = đếm tự động từ số `ENCOUNTER` đã hoàn tất, không nhập tay.
+3. **Phiếu khám** lưu dạng có cấu trúc (JSON theo từng mục: vọng/văn/vấn/thiết, mạch, lưỡi, bát cương, pháp…) + ô văn bản tự do – nên bố cục đúng mẫu của phòng khám sau khi tôi nhận file mẫu.
+4. **Chẩn đoán**: ICD-10 (danh mục tra cứu, gồm cả mã YHCT chương U50-U79 nếu anh/chị muốn dùng) + bệnh danh YHCT chọn từ danh mục *hoặc* gõ tự do.
+5. **Ký & khóa**: bác sĩ bấm "Ký" → phiếu bị khóa; muốn sửa phải tạo **AMENDMENT** (bản điều chỉnh) có lý do, người sửa, thời gian; bản gốc luôn còn.
+6. **Gói liệu trình**: 1 gói = N buổi, đã thu bao nhiêu, đã dùng/còn lại bao nhiêu; mỗi buổi điều trị trừ 1 buổi.
+7. **FHIR**: đặt tên/ánh xạ tương thích (Patient, Encounter, Condition, Observation, ServiceRequest, MedicationRequest, DiagnosticReport…) – chưa cần chạy máy chủ FHIR trong MVP, chỉ giữ cấu trúc để xuất sau.
+8. **BHYT**: chừa sẵn trường `payer_type` (tự trả/BHYT), thẻ BHYT, mã KCB – chưa hiển thị trong MVP.
+9. Xóa dữ liệu: **không xóa cứng** (chỉ hủy/ẩn có lý do) – đúng nguyên tắc lưu trữ bệnh án.
+
+## 4. Luồng màn hình
+
+```
+SALE:        Danh sách lead ─► Tạo lead (nguồn, người phụ trách) ─► Đặt lịch (chọn ngày/giờ/bác sĩ) ─► Trạng thái khách
+LỄ TÂN:      Trang chủ hôm nay (lịch hẹn + hàng đợi)
+             ├─ Khách có hẹn ► Check-in ► (khách cũ: tìm SĐT/tên/mã) | (khách mới: form hành chính + đồng ý dữ liệu)
+             └─ Khách vãng lai ► Tạo bệnh nhân ► Check-in
+             Hàng đợi ► (bác sĩ gọi) ► ... ► Thu ngân ► Bán thuốc ► Hẹn buổi tới + in lưu ý
+BÁC SĨ:      Hàng đợi của tôi ► Mở hồ sơ ► Tab: Tổng quan | Phiếu khám | Chỉ định XN | Liệu trình | Đơn thuốc ► Ký
+TRỊ LIỆU VIÊN: Việc hôm nay của tôi (buổi được giao) ► Mở buổi ► Ghi phiếu theo dõi (nhanh trên điện thoại) ► Hoàn thành
+QUẢN LÝ:     Báo cáo | Nhân sự & phân quyền | Danh mục dịch vụ/bảng giá | Danh mục thuốc & kho | Nhật ký truy cập | Sao lưu
+```
+
+Nguyên tắc UI: **mobile-first** cho trị liệu viên (nút lớn, chọn nhanh thủ thuật, ghi chú giọng nói bằng bàn phím điện thoại), bảng dày dữ liệu cho máy bàn của lễ tân; tất cả bằng tiếng Việt, logo ở đầu trang và đầu bản in.
+
+## 5. Thứ tự xây & sản phẩm giao mỗi bước
+
+| Giai đoạn | Nội dung | Chạy thử với |
+|---|---|---|
+| 0 | Khung dự án, Docker, đăng nhập + 2FA, phân quyền, nhật ký | 5 tài khoản mẫu |
+| 1 | Lead/Lịch hẹn + Tiếp đón + Hàng đợi | 30 bệnh nhân mẫu |
+| 2 | Phiếu khám YHCT, chẩn đoán, chỉ định XN gửi ngoài, ký/khóa, in | 10 ca mẫu |
+| 3 | Chỉ định liệu trình + Phiếu theo dõi điều trị | 5 liệu trình mẫu |
+| 4 | Thu ngân + gói liệu trình + Thuốc thành phẩm + tồn kho + in đơn/hóa đơn | bảng giá thật |
+| 5 | Nhắc lịch & chăm sóc sau điều trị | mẫu tin nhắn |
+| 6 | Báo cáo | dữ liệu mẫu 3 tháng |
+| 7 | Triển khai mini PC, sao lưu, truy cập từ xa, tài liệu khôi phục, tập huấn | – |
+
+Mỗi giai đoạn tôi sẽ chạy thử, quay màn hình/ảnh chụp để anh/chị duyệt rồi mới sang giai đoạn tiếp.
+
+## 6. Lưu ý pháp lý (cần xác minh trước khi đưa vào dùng thật)
+
+- Tôi sẽ thiết kế theo các nguyên tắc chung của bệnh án điện tử: định danh người dùng, ký số/xác nhận, không sửa đè, nhật ký, lưu trữ, sao lưu. **Tôi không thể tự khẳng định phần mềm "đạt chuẩn" Thông tư 13/2025/TT-BYT hay Luật BVDLCN 2025**: các văn bản này có yêu cầu cụ thể (ví dụ ký số chuyên dùng, thời hạn lưu trữ, mẫu biểu, thông báo xử lý dữ liệu nhạy cảm) cần **đối chiếu với luật sư/Sở Y tế** trước khi bỏ bệnh án giấy. Tôi sẽ lập một **bảng đối chiếu yêu cầu ↔ chức năng** để anh/chị đưa cho người có chuyên môn thẩm định.
+- Phiếu đồng ý: lưu phiên bản nội dung, thời điểm, người ghi nhận, in ra cho bệnh nhân ký (hoặc ký trên màn hình cảm ứng).
+- Bệnh án điện tử "ký" trong MVP = xác nhận bằng tài khoản + 2FA + dấu thời gian. Ký số chữ ký số (USB token/ký từ xa) có thể tích hợp ở giai đoạn sau nếu cơ quan quản lý yêu cầu.
+
+## 7. Câu hỏi cần anh/chị trả lời
+
+1. **Truy cập từ xa**: Cloudflare Tunnel (không cài app – tôi đề xuất) hay Tailscale?
+2. **Cloud sao lưu**: Backblaze B2 / Google Drive / khác? Đã có tài khoản chưa?
+3. **Kênh cảnh báo** khi lỗi: Zalo, Telegram hay Email?
+4. **Nhắc lịch cho khách**: MVP chỉ tạo danh sách + mẫu tin để nhân viên bấm gửi tay (copy/mở Zalo)? Hay muốn gửi tự động (cần Zalo ZNS, tốn phí)? Tôi đề xuất **gửi tay trước**.
+5. **In ấn**: máy in thường A4/A5, hay in nhiệt K80 cho hóa đơn?
+6. **Hóa đơn**: "hóa đơn" ở đây là phiếu thu nội bộ, hay hóa đơn điện tử theo Nghị định 123 (cần kết nối nhà cung cấp như MISA/Viettel)?
+7. **Nhà thuốc**: có cần quản lý lô/hạn dùng và giá nhập không, hay tồn kho cơ bản (số lượng) như yêu cầu?
+8. **Gói liệu trình**: có chiết khấu/khuyến mãi/hoàn tiền, hay chuyển nhượng buổi không?
+9. **Bác sĩ có kê thuốc sắc/thang (vị thuốc)** không, hay chỉ thành phẩm? (đề bài ghi chỉ thành phẩm)
+
+## 8. Tôi cần anh/chị gửi
+
+- [ ] Mẫu phiếu khám (ảnh/PDF/Word)
+- [ ] Mẫu phiếu theo dõi điều trị
+- [ ] Bảng giá dịch vụ
+- [ ] Logo (PNG/SVG nền trong suốt, càng lớn càng tốt) + tên, địa chỉ, SĐT, giấy phép hành nghề in trên phiếu
+- [ ] Danh sách thuốc thành phẩm đang bán (nếu có)
+- [ ] Số lượng tài khoản và vai trò thật
+
+## 9. Rủi ro / đánh đổi cần biết
+
+- **Mini PC là một điểm hỏng đơn lẻ**: nếu hỏng ổ cứng, bản sao lưu đêm trước là điểm khôi phục (mất tối đa ~1 ngày dữ liệu). Có thể bổ sung sao lưu mỗi giờ nếu cần.
+- Làm việc *khi mất Internet*: app vẫn chạy trong mạng nội bộ phòng khám (qua WiFi/LAN), chỉ truy cập từ ngoài và sao lưu cloud bị gián đoạn.
+- Phạm vi MVP khá lớn; tôi đề xuất **dùng thử thực tế sau giai đoạn 3** (đủ khám–điều trị–theo dõi) trước khi làm tiếp.
