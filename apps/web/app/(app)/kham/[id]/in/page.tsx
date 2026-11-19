@@ -8,8 +8,8 @@ const box = (on: boolean) => (on ? '☒' : '☐');
 const dateVN = (s: string) => new Date(s).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
 
 export default function PrintExam() {
-  const { id } = useParams<{ id: string }>(); const [c, setC] = useState<any>(null); const [err, setErr] = useState('');
-  useEffect(() => { api(`/exams/by-encounter/${id}`).then(setC).catch((e) => setErr(e.message)); }, [id]);
+  const { id } = useParams<{ id: string }>(); const [c, setC] = useState<any>(null); const [rx, setRx] = useState<any>(null); const [err, setErr] = useState('');
+  useEffect(() => { api(`/prescriptions/by-encounter/${id}`).then((r) => setRx(r.rx)).catch(() => {}); api(`/exams/by-encounter/${id}`).then(setC).catch((e) => setErr(e.message)); }, [id]);
   useEffect(() => { if (c) setTimeout(() => window.print(), 600); }, [c]);
   if (err) return <div className="err">{err}</div>; if (!c) return <div>Đang tải…</div>;
   const d = c.exam?.effective ?? {}; const p = c.patient; const g = (k: string) => getPath(d, k);
@@ -33,7 +33,7 @@ export default function PrintExam() {
               return <div key={i}><span className="l">{b.label}: </span>{b.options.map((o) => <span key={optV(o)} style={{ marginRight: 8 }}>{box(on(optV(o)))} {optL(o)}</span>)}{b.other && g(b.other) ? <span>Khác: {g(b.other)}</span> : null}</div>; }
             if (b.t === 'vitals') return <div key={i}>{VITALS.map((v) => <span key={v.k} style={{ marginRight: 12 }}><b>{v.label}</b> {g(`vitals.${v.k}`) ?? '…'} {v.unit}</span>)}</div>;
             if (b.t === 'tests') return <div key={i}>{TESTS.map((t) => <div key={t.group}><span className="l">{t.group}: </span>{t.items.map((x) => { const r = g(`msk.neuro.tests.${x}`); return <span key={x} style={{ marginRight: 8 }}>{x} {box(r === '-')}- {box(r === '+')}+</span>; })}</div>)}</div>;
-            if (b.t === 'drugs') return <table key={i} style={{ border: '1px solid #000' }}><thead><tr><td className="l" style={{ border: '1px solid #000' }}>Tên thuốc</td><td className="l" style={{ border: '1px solid #000' }}>Liều / cách dùng</td></tr></thead><tbody>{(g('drugs') ?? []).map((r: any, j: number) => <tr key={j}><td style={{ border: '1px solid #000' }}>{r.name}</td><td style={{ border: '1px solid #000' }}>{r.dose}</td></tr>)}</tbody></table>;
+            if (b.t === 'drugs') return <table key={i} style={{ border: '1px solid #000' }}><thead><tr><td className="l" style={{ border: '1px solid #000' }}>Tên thuốc</td><td className="l" style={{ border: '1px solid #000' }}>Liều / cách dùng</td></tr></thead><tbody>{(rx?.lines ?? []).map((r: any, j: number) => <tr key={j}><td style={{ border: '1px solid #000' }}>{r.name} (SL {r.qty})</td><td style={{ border: '1px solid #000' }}>{r.dosage}</td></tr>)}</tbody></table>;
           })}
         </div>
       ))}

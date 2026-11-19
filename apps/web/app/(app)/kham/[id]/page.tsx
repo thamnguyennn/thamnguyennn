@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, usePathname } from 'next/navigation';
 import { api, ApiError, fmtDateTime } from '@/lib/api';
 import { Block, EXAM_SECTIONS, getPath, Opt, optL, optV, SCREENING, setPath, TESTS, VITALS } from '@/lib/exam-schema';
 
@@ -57,6 +57,7 @@ export default function ExamPage() {
       <div className="row" style={{ alignItems: 'center' }}>
         <h1 style={{ flex: 3 }}>Phiếu khám ngoại trú</h1>
         <div style={{ textAlign: 'right' }}>
+          {me?.role === 'DOCTOR' && <Link href={`/don-thuoc/${id}`}><button className="sec" style={{ marginRight: 6 }}>Đơn thuốc</button></Link>}
           {me?.role === 'DOCTOR' && <Link href={`/lieu-trinh/moi?enc=${id}`}><button style={{ marginRight: 6 }}>Chỉ định liệu trình</button></Link>}
           <Link href={`/kham/${id}/in`} target="_blank"><button className="sec">In phiếu</button></Link>
         </div>
@@ -128,14 +129,7 @@ function BlockView({ b, data, change }: { b: Block; data: any; change: (p: strin
     case 'tests': return <div>{TESTS.map((g) => <div key={g.group}><label>{g.group}</label><div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 18px' }}>
       {g.items.map((t) => { const k = `msk.neuro.tests.${t}`; const v = getPath(data, k); return <span key={t}>{t}: {['-', '+'].map((x) => <label key={x} style={{ display: 'inline-flex', gap: 3, margin: '0 6px 0 4px', color: 'var(--ink)', fontSize: '1rem' }}><input style={{ width: 'auto' }} type="radio" name={k} checked={v === x} onChange={() => change(k, x)} />{x}</label>)}</span>; })}</div></div>)}</div>;
     case 'icd': return <IcdField b={b} data={data} change={change} />;
-    case 'drugs': { const rows: { name: string; dose: string }[] = getPath(data, 'drugs') ?? [];
-      const set = (r: typeof rows) => change('drugs', r);
-      return <div>{rows.map((r, i) => <div className="row" key={i} style={{ marginBottom: 6 }}>
-        <input placeholder="Tên thuốc" value={r.name} onChange={(e) => set(rows.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} />
-        <input placeholder="Liều / cách dùng" value={r.dose} onChange={(e) => set(rows.map((x, j) => (j === i ? { ...x, dose: e.target.value } : x)))} />
-        <button type="button" className="sec" style={{ flex: '0 0 auto' }} onClick={() => set(rows.filter((_, j) => j !== i))}>Xóa</button></div>)}
-        <button type="button" className="sec" onClick={() => set([...rows, { name: '', dose: '' }])}>+ Thêm thuốc</button>
-        <p className="mut">Chỉ kê thuốc thành phẩm. Đơn thuốc in riêng và trừ kho sẽ làm ở giai đoạn thuốc.</p></div>; }
+    case 'drugs': return <DrugsNote />;
   }
 }
 
@@ -146,4 +140,9 @@ function IcdField({ b, data, change }: { b: Extract<Block, { t: 'icd' }>; data: 
   return <div><label>{b.label} (gõ mã ICD-10 hoặc tên để gợi ý, vẫn nhập tự do được)</label>
     <input list={lid} value={val} onChange={(e) => onChange(e.target.value)} />
     <datalist id={lid}>{opts.map((o) => <option key={o.code} value={`${o.code} – ${o.name}`} />)}</datalist></div>;
+}
+
+function DrugsNote() {
+  const id = usePathname().split('/').pop();
+  return <p>Kê thuốc thành phẩm tại trang <Link href={`/don-thuoc/${id}`}><b>Đơn thuốc</b></Link> (chọn từ danh mục để quầy bán và trừ kho đúng).</p>;
 }

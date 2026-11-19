@@ -36,8 +36,9 @@
 | Hạ tầng – Docker Compose, sao lưu mã hóa → Google Drive, khôi phục | ✅ sao lưu/khôi phục đã thử trên máy dev; **chưa chạy thử Docker thật & Google Drive** (môi trường này không có Docker) |
 | 2 – Phiếu khám YHCT-PHCN (mục I–XII, tự lưu nháp, ký/khóa, điều chỉnh có lý do, in A4) | ✅ xong, đã kiểm thử (còn: in gọn về 2 trang, đơn thuốc in riêng) |
 | 3 – Liệu trình + Phiếu theo dõi (chỉ định điền sẵn từ phiếu khám, ghi buổi trên điện thoại, đếm buổi, tái lượng giá, in 10 buổi/tờ A4) | ✅ xong, đã kiểm thử |
-| 4 – Thu ngân + gói trả trước + thuốc + kho | ⏭ tiếp theo |
-| 5–7 | chưa làm |
+| 4 – Thu ngân (phiếu thu nội bộ), gói trả trước, thuốc thành phẩm, đơn thuốc, tồn kho | ✅ xong, đã kiểm thử (dùng dữ liệu MẪU cho thuốc và gói – chờ danh mục thật) |
+| 5 – Nhắc lịch & chăm sóc sau điều trị | ⏭ tiếp theo |
+| 6–7 | chưa làm |
 
 ---
 
@@ -183,3 +184,15 @@ Mỗi giai đoạn tôi sẽ chạy thử, quay màn hình/ảnh chụp để an
 - **Mini PC là một điểm hỏng đơn lẻ**: nếu hỏng ổ cứng, bản sao lưu đêm trước là điểm khôi phục (mất tối đa ~1 ngày dữ liệu). Có thể bổ sung sao lưu mỗi giờ nếu cần.
 - Làm việc *khi mất Internet*: app vẫn chạy trong mạng nội bộ phòng khám (qua WiFi/LAN), chỉ truy cập từ ngoài và sao lưu cloud bị gián đoạn.
 - Phạm vi MVP khá lớn; tôi đề xuất **dùng thử thực tế sau giai đoạn 3** (đủ khám–điều trị–theo dõi) trước khi làm tiếp.
+
+## Quy tắc thu ngân/kho đang áp dụng (giả định, chờ anh/chị xác nhận)
+
+- **Giá lấy từ bảng giá trên máy chủ**, lễ tân không sửa giá tay.
+- **Giảm giá:** chỉ tài khoản **Quản lý** thực hiện, bắt buộc ghi lý do, lưu nhật ký.
+- **Thu một phần / nợ:** cho phép; thu thêm sau trên phiếu. Có 3 hình thức: tiền mặt, chuyển khoản, quẹt thẻ.
+- **Phiếu thu không xóa**: chỉ **Hủy** (quản lý, có lý do) – tự hoàn kho và hoàn buổi gói. Gói đã bán mà khách đã dùng thì không hủy được.
+- **Gói trả trước:** bán gói → tạo gói cho bệnh nhân (số buổi, hạn dùng); mỗi buổi điều trị lễ tân chọn "Trừ 1 buổi từ gói" thay cho thu tiền lẻ/combo. Chưa làm: hoàn tiền gói, chuyển nhượng buổi, bảo lưu.
+- **Kho:** tồn = tổng nhập − xuất; không cho bán vượt tồn; điều chỉnh kiểm kê bắt buộc lý do; có số lô/hạn dùng không bắt buộc, cảnh báo thuốc sắp hết và lô sắp hết hạn (90 ngày). Chưa tự chọn lô theo hạn gần nhất (FEFO).
+- **Đơn thuốc:** bác sĩ kê từ danh mục (hoặc ghi thuốc ngoài danh mục); đơn khóa khi quầy đã bán theo đơn. In A5.
+- **Cần quyền nhìn đơn thuốc:** lễ tân xem được đơn thuốc để bán thuốc (không xem được phiếu khám).
+- **Thuốc và gói mẫu** ("(mẫu)") chỉ để chạy thử; quản lý phải thay bằng danh mục thật.

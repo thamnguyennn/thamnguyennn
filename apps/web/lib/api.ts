@@ -32,3 +32,7 @@ export const PP_HINT: Record<string, string> = {
 };
 export const PP_LEGEND = 'CC Châm cứu · ĐX Điện xung · SA Siêu âm · XK Sóng xung kích · TT Từ trường · HN Hồng ngoại · NE Máy nén ép · PF Nhúng sáp parafin · TLMM Trị liệu cơ–mô mềm · DĐK/NC Di động khớp/Nắn chỉnh';
 export const fmtDate = (s: string) => new Date(s).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+
+export const vnd = (n: number) => `${(n ?? 0).toLocaleString('vi-VN')}đ`;
+export const METHOD_LABEL: Record<string, string> = { CASH: 'Tiền mặt', TRANSFER: 'Chuyển khoản', CARD: 'Quẹt thẻ' };
+export const INV_STATUS: Record<string, string> = { PAID: 'Đã thu đủ', PARTIAL: 'Còn nợ', UNPAID: 'Chưa thu', VOID: 'Đã hủy' };

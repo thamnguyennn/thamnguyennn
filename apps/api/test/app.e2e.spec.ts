@@ -9,13 +9,13 @@ import { AppModule } from '../src/app.module';
 import { decrypt } from '../src/common/crypto';
 
 describe('EMR – đăng nhập, phân quyền, tiếp đón', () => {
-  let docSecret = '';
+  let docSecret = ''; let mgrSecret = '';
   let app: NestExpressApplication; let http: any; const db = new PrismaClient();
   let ipn = 0; const agent = () => request.agent(http).set('X-Forwarded-For', `10.1.${++ipn}.1`);
 
   beforeAll(async () => {
     process.env.ADMIN_PASSWORD = 'Admin12345x';
-    await db.$executeRawUnsafe('TRUNCATE "AuthSession","AuditLog","Encounter","Appointment","Lead","PatientConsent","Patient","Counter","User","LeadSource" CASCADE');
+    await db.$executeRawUnsafe('TRUNCATE "AuthSession","AuditLog","Encounter","Appointment","Lead","PatientConsent","Patient","Counter","User","LeadSource","Product","PackageTemplate","StockMovement" CASCADE');
     const { execSync } = require('child_process');
     execSync('npx ts-node prisma/seed.ts', { stdio: 'inherit', env: { ...process.env, ADMIN_PASSWORD: 'Admin12345x', SEED_DEMO: '1' } });
     const m = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -41,6 +41,7 @@ describe('EMR – đăng nhập, phân quyền, tiếp đón', () => {
     expect(l.body.step).toBe('setup2fa');
     const s = await a.post('/api/auth/2fa/setup').send({ ticket: l.body.ticket }).expect(200);
     await a.post('/api/auth/2fa/verify').send({ ticket: l.body.ticket, code: '000000' }).expect(401);
+    mgrSecret = s.body.secret;
     await a.post('/api/auth/2fa/verify').send({ ticket: l.body.ticket, code: generateSync({ secret: s.body.secret }) }).expect(200);
     await a.get('/api/users').expect(200);
     const u = await db.user.findUnique({ where: { username: 'ql.tam' } });
@@ -177,6 +178,65 @@ describe('EMR – đăng nhập, phân quyền, tiếp đón', () => {
     expect(rl.used).toBe(2); expect(rl.diagnosis).toBeUndefined();
     await lt.get(`/api/plans/${plan.id}`).expect(403);
     await db.treatmentPlan.findUnique({ where: { id: plan.id } });
+  });
+
+  it('thu ngân + thuốc + kho + gói trả trước + hủy phiếu', async () => {
+    const mgr = agent(); const m = await mgr.post('/api/auth/login').send({ username: 'ql.tam', password: 'Demo@12345' }).expect(200);
+    await mgr.post('/api/auth/2fa/verify').send({ ticket: m.body.ticket, code: generateSync({ secret: mgrSecret }) }).expect(200);
+    const doc = agent(); const d = await doc.post('/api/auth/login').send({ username: 'bs.an', password: 'Demo@12345' }).expect(200);
+    await doc.post('/api/auth/2fa/verify').send({ ticket: d.body.ticket, code: generateSync({ secret: docSecret }) }).expect(200);
+    const lt = agent(); await lt.post('/api/auth/login').send({ username: 'tl.an', password: 'Demo@12345' });
+
+    await lt.post('/api/products').send({ code: 'T1', name: 'Cao dán thử', unit: 'hộp', price: 100000 }).expect(403);
+    const prod = (await mgr.post('/api/products').send({ code: 'T1', name: 'Cao dán thử', unit: 'hộp', price: 100000, costPrice: 60000 }).expect(201)).body;
+    await mgr.post(`/api/products/${prod.id}/stock-in`).send({ qty: 10, unitCost: 60000, lot: 'L1', expiryDate: '2028-01-01' }).expect(201);
+    await mgr.post(`/api/products/${prod.id}/adjust`).send({ delta: -99, reason: 'kiểm kê thử' }).expect(400); // không cho tồn âm
+    const tpl = (await mgr.post('/api/packages/templates').send({ name: 'Gói 3 buổi thử', sessions: 3, price: 1200000, validDays: 30 }).expect(201)).body;
+
+    const p = (await lt.post('/api/patients').send({ fullName: 'Thu Ngân Thử', birthYear: 1980, gender: 'MALE', phone: '0911000999', consent: true }).expect(201)).body;
+    const e1 = (await lt.post('/api/encounters/check-in').send({ patientId: p.id }).expect(201)).body;
+    await doc.put(`/api/prescriptions/by-encounter/${e1.id}`).send({ lines: [{ productId: prod.id, name: 'Cao dán thử', qty: 2, dosage: 'Dán 1 miếng/ngày' }] }).expect(200);
+    const co = (await lt.get(`/api/invoices/checkout/${e1.id}`).expect(200)).body;
+    expect(co.suggestedProducts[0]).toMatchObject({ productId: prod.id, qty: 2, price: 100000, stock: 10 });
+
+    const body = (extra: any = {}) => ({ encounterId: e1.id, lines: [{ kind: 'SERVICE', serviceCode: 'CC' }, { kind: 'PRODUCT', productId: prod.id, qty: 2 }, { kind: 'PACKAGE_SALE', templateId: tpl.id }], payments: [{ method: 'CASH', amount: 500000 }], ...extra });
+    await lt.post('/api/invoices').send(body({ discount: 50000, discountReason: 'KH thân thiết' })).expect(403);   // lễ tân không giảm giá
+    await lt.post('/api/invoices').send(body({ payments: [{ method: 'CASH', amount: 99999999 }] })).expect(400);   // thu quá
+    await lt.post('/api/invoices').send({ ...body(), lines: [{ kind: 'PRODUCT', productId: prod.id, qty: 11 }] }).expect(409); // quá tồn
+    const i1 = (await lt.post('/api/invoices').send(body()).expect(201)).body;
+    expect([i1.subtotal, i1.total, i1.paid, i1.status]).toEqual([150000 + 200000 + 1200000, 1550000, 500000, 'PARTIAL']);
+    expect(i1.code).toMatch(/^PT-\d\d-000001$/);
+    expect((await mgr.get('/api/products').expect(200)).body.find((x: any) => x.id === prod.id).stock).toBe(8);
+    expect((await db.encounter.findUnique({ where: { id: e1.id } }))!.status).toBe('DONE');
+    await lt.post('/api/invoices').send(body()).expect(409);                                                         // 1 lượt = 1 phiếu
+    await doc.put(`/api/prescriptions/by-encounter/${e1.id}`).send({ lines: [] }).expect(409);                       // đơn đã bán thì khóa
+    const done = (await lt.post(`/api/invoices/${i1.id}/payments`).send({ method: 'TRANSFER', amount: 1050000, ref: 'CK123' }).expect(201)).body;
+    expect([done.paid, done.status]).toEqual([1550000, 'PAID']);
+    await lt.post(`/api/invoices/${i1.id}/payments`).send({ method: 'CASH', amount: 1 }).expect(400);
+
+    // buổi sau: trừ 1 buổi từ gói đã mua
+    await lt.patch(`/api/encounters/${e1.id}/status`).send({ status: 'DONE' });
+    const e2 = (await lt.post('/api/encounters/check-in').send({ patientId: p.id }).expect(201)).body;
+    const pk = (await lt.get(`/api/packages/patient/${p.id}`).expect(200)).body[0];
+    expect(pk.remaining).toBe(3);
+    const i2 = (await lt.post('/api/invoices').send({ encounterId: e2.id, lines: [{ kind: 'PACKAGE_USE', patientPackageId: pk.id }], payments: [] }).expect(201)).body;
+    expect([i2.total, i2.status]).toEqual([0, 'PAID']);
+    expect((await lt.get(`/api/packages/patient/${p.id}`)).body[0].remaining).toBe(2);
+
+    // hủy: chỉ quản lý; gói đã dùng nên phiếu bán gói không hủy được; hủy phiếu trừ buổi thì hoàn buổi
+    await lt.post(`/api/invoices/${i2.id}/void`).send({ reason: 'nhập nhầm buổi' }).expect(403);
+    await mgr.post(`/api/invoices/${i2.id}/void`).send({ reason: 'nhập nhầm buổi' }).expect(201);
+    expect((await lt.get(`/api/packages/patient/${p.id}`)).body[0].remaining).toBe(3);
+    await mgr.post(`/api/invoices/${i1.id}/void`).send({ reason: 'khách hủy toàn bộ' }).expect(201);                 // gói chưa dùng → hủy được
+    expect((await mgr.get('/api/products').expect(200)).body.find((x: any) => x.id === prod.id).stock).toBe(10);   // hoàn kho
+    expect((await lt.get(`/api/packages/patient/${p.id}`)).body[0].status).toBe('CANCELLED');
+    await mgr.post(`/api/invoices/${i1.id}/void`).send({ reason: 'hủy lại lần 2' }).expect(409);
+
+    // quản lý giảm giá có lý do
+    const e3 = (await lt.post('/api/encounters/check-in').send({ patientId: p.id }).expect(201)).body;
+    const i3 = (await mgr.post('/api/invoices').send({ encounterId: e3.id, lines: [{ kind: 'SERVICE', serviceCode: 'COMBO_TC' }], discount: 100000, discountReason: 'Khách giới thiệu', payments: [{ method: 'CARD', amount: 700000 }] }).expect(201)).body;
+    expect([i3.total, i3.status]).toEqual([700000, 'PAID']);
+    expect(await db.auditLog.count({ where: { action: 'VOID' } })).toBe(2);
   });
 
   it('khóa tài khoản sau 5 lần sai', async () => {

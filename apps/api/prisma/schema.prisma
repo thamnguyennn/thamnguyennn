@@ -148,6 +148,8 @@ model Patient {
   encounters   Encounter[]
   exams        ExamForm[]
   plans        TreatmentPlan[]
+  packages     PatientPackage[]
+  invoices     Invoice[]
 
   @@index([phone])
   @@index([fullName])
@@ -365,4 +367,153 @@ model TreatmentLine {
   session TreatmentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId])
+}
+
+// ───────── Thuốc thành phẩm & kho ─────────
+model Product {
+  id        String  @id @default(uuid())
+  code      String  @unique
+  name      String
+  unit      String  // hộp, lọ, vỉ...
+  price     Int     // giá bán
+  costPrice Int     @default(0) // giá nhập gần nhất
+  minStock  Int     @default(0) // cảnh báo sắp hết
+  active    Boolean @default(true)
+  note      String?
+
+  movements StockMovement[]
+  rxLines   PrescriptionLine[]
+}
+
+// Tồn kho = tổng qty các phát sinh. Không sửa/xóa, chỉ thêm (nhập, bán, điều chỉnh, hoàn).
+model StockMovement {
+  id         String    @id @default(uuid())
+  productId  String
+  qty        Int       // + nhập / − xuất
+  type       String    // IN | SALE | ADJUST | VOID
+  unitCost   Int?
+  lot        String?
+  expiryDate DateTime?
+  invoiceId  String?
+  note       String?
+  byId       String
+  at         DateTime  @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([productId, at])
+}
+
+model Prescription {
+  id          String   @id @default(uuid())
+  encounterId String   @unique
+  patientId   String
+  doctorId    String
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  lines PrescriptionLine[]
+}
+
+model PrescriptionLine {
+  id             String  @id @default(uuid())
+  prescriptionId String
+  productId      String?
+  name           String
+  qty            Int     @default(1)
+  dosage         String?
+  sort           Int     @default(0)
+
+  prescription Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  product      Product?     @relation(fields: [productId], references: [id])
+}
+
+// ───────── Gói liệu trình trả trước ─────────
+model PackageTemplate {
+  id           String  @id @default(uuid())
+  name         String
+  sessions     Int
+  price        Int
+  validDays    Int     @default(180)
+  description  String?
+  active       Boolean @default(true)
+  sample       Boolean @default(false) // dữ liệu mẫu, cần quản lý chỉnh lại
+
+  owned PatientPackage[]
+}
+
+model PatientPackage {
+  id           String   @id @default(uuid())
+  patientId    String
+  templateId   String?
+  name         String
+  totalSessions Int
+  usedSessions Int      @default(0)
+  pricePaid    Int
+  purchasedAt  DateTime @default(now())
+  expiresAt    DateTime
+  status       String   @default("ACTIVE") // ACTIVE | EXHAUSTED | EXPIRED | CANCELLED
+  invoiceId    String?
+
+  patient  Patient          @relation(fields: [patientId], references: [id])
+  template PackageTemplate? @relation(fields: [templateId], references: [id])
+
+  @@index([patientId, status])
+}
+
+// ───────── Thu ngân (phiếu thu nội bộ) ─────────
+model Invoice {
+  id          String    @id @default(uuid())
+  code        String    @unique // PT-26-000001
+  encounterId String?
+  patientId   String?
+  customerName String?  // khách mua lẻ không có hồ sơ
+  subtotal    Int
+  discount    Int       @default(0)
+  discountReason String?
+  total       Int
+  paid        Int       @default(0)
+  status      String    // PAID | PARTIAL | UNPAID | VOID
+  note        String?
+  createdById String
+  createdAt   DateTime  @default(now())
+  voidedAt    DateTime?
+  voidedById  String?
+  voidReason  String?
+
+  patient  Patient?       @relation(fields: [patientId], references: [id])
+  lines    InvoiceLine[]
+  payments Payment[]
+
+  @@index([createdAt])
+  @@index([encounterId])
+}
+
+model InvoiceLine {
+  id          String  @id @default(uuid())
+  invoiceId   String
+  kind        String  // SERVICE | PRODUCT | PACKAGE_SALE | PACKAGE_USE
+  name        String
+  serviceCode String?
+  productId   String?
+  patientPackageId String?
+  qty         Int     @default(1)
+  unitPrice   Int
+  amount      Int
+  sort        Int     @default(0)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id        String   @id @default(uuid())
+  invoiceId String
+  method    String   // CASH | TRANSFER | CARD
+  amount    Int
+  ref       String?
+  byId      String
+  at        DateTime @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
 }

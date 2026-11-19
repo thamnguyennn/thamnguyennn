@@ -63,6 +63,20 @@ async function main() {
     for (const [username, fullName, role, title] of staff)
       await prisma.user.upsert({ where: { username }, create: { username, fullName, role, title, passwordHash: demoPw, mustChangePassword: false }, update: {} });
   }
+  if (process.env.SEED_DEMO === '1') {
+    // DỮ LIỆU MẪU – quản lý cần thay bằng danh mục thật của phòng khám
+    for (const [code, name, unit, price, cost] of [['MAU01', 'Cao dán giảm đau (mẫu)', 'hộp', 85000, 55000], ['MAU02', 'Dầu xoa bóp (mẫu)', 'lọ', 65000, 40000], ['MAU03', 'Viên hoàn hỗ trợ xương khớp (mẫu)', 'hộp', 220000, 150000]] as [string, string, string, number, number][]) {
+      const p = await prisma.product.upsert({ where: { code }, create: { code, name, unit, price, costPrice: cost, minStock: 5 }, update: {} });
+      if (!(await prisma.stockMovement.count({ where: { productId: p.id } })))
+        await prisma.stockMovement.create({ data: { productId: p.id, qty: 20, type: 'IN', unitCost: cost, lot: 'MAU', expiryDate: new Date(Date.now() + 700 * 86400000), note: 'Tồn mẫu', byId: 'seed' } });
+    }
+    if (!(await prisma.packageTemplate.count()))
+      await prisma.packageTemplate.createMany({ data: [
+        { name: 'Gói 10 buổi Combo Cơ bản (mẫu)', sessions: 10, price: 4500000, validDays: 120, sample: true },
+        { name: 'Gói 10 buổi Combo Tiêu chuẩn (mẫu)', sessions: 10, price: 7200000, validDays: 120, sample: true },
+        { name: 'Gói 20 buổi Combo Tiêu chuẩn (mẫu)', sessions: 20, price: 13600000, validDays: 240, sample: true },
+      ] });
+  }
   console.log('Seed xong');
 }
 main().finally(() => prisma.$disconnect());
