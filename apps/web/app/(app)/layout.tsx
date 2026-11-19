@@ -9,6 +9,7 @@ const NAV: { href: string; label: string; roles: Role[] }[] = [
   { href: '/hom-nay', label: 'Hôm nay / Hàng đợi', roles: ['RECEPTION', 'DOCTOR', 'THERAPIST', 'MANAGER'] },
   { href: '/benh-nhan', label: 'Bệnh nhân & Tiếp đón', roles: ['RECEPTION', 'MANAGER'] },
   { href: '/lieu-trinh', label: 'Liệu trình', roles: ['RECEPTION', 'DOCTOR', 'THERAPIST', 'MANAGER'] },
+  { href: '/nhac-lich', label: 'Nhắc lịch & chăm sóc', roles: ['SALE', 'RECEPTION', 'MANAGER'] },
   { href: '/thu-ngan', label: 'Thu ngân', roles: ['RECEPTION', 'MANAGER'] },
   { href: '/thuoc', label: 'Thuốc & kho', roles: ['RECEPTION', 'DOCTOR', 'MANAGER'] },
   { href: '/goi', label: 'Gói liệu trình', roles: ['RECEPTION', 'MANAGER', 'DOCTOR'] },

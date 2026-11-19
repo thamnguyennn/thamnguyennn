@@ -15,7 +15,7 @@ describe('EMR – đăng nhập, phân quyền, tiếp đón', () => {
 
   beforeAll(async () => {
     process.env.ADMIN_PASSWORD = 'Admin12345x';
-    await db.$executeRawUnsafe('TRUNCATE "AuthSession","AuditLog","Encounter","Appointment","Lead","PatientConsent","Patient","Counter","User","LeadSource","Product","PackageTemplate","StockMovement" CASCADE');
+    await db.$executeRawUnsafe('TRUNCATE "AuthSession","AuditLog","Encounter","Appointment","Lead","PatientConsent","Patient","Counter","User","LeadSource","Product","PackageTemplate","StockMovement","FollowUpLog" CASCADE');
     const { execSync } = require('child_process');
     execSync('npx ts-node prisma/seed.ts', { stdio: 'inherit', env: { ...process.env, ADMIN_PASSWORD: 'Admin12345x', SEED_DEMO: '1' } });
     const m = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -237,6 +237,65 @@ describe('EMR – đăng nhập, phân quyền, tiếp đón', () => {
     const i3 = (await mgr.post('/api/invoices').send({ encounterId: e3.id, lines: [{ kind: 'SERVICE', serviceCode: 'COMBO_TC' }], discount: 100000, discountReason: 'Khách giới thiệu', payments: [{ method: 'CARD', amount: 700000 }] }).expect(201)).body;
     expect([i3.total, i3.status]).toEqual([700000, 'PAID']);
     expect(await db.auditLog.count({ where: { action: 'VOID' } })).toBe(2);
+  });
+
+  it('nhắc lịch: lịch ngày mai, chăm sóc sau điều trị, buổi tiếp theo, bỏ dở, lead; sale chỉ thấy lead', async () => {
+    const doc = agent(); const d = await doc.post('/api/auth/login').send({ username: 'bs.an', password: 'Demo@12345' }).expect(200);
+    await doc.post('/api/auth/2fa/verify').send({ ticket: d.body.ticket, code: generateSync({ secret: docSecret }) }).expect(200);
+    const lt = agent(); await lt.post('/api/auth/login').send({ username: 'tl.an', password: 'Demo@12345' });
+    const kv = agent(); await kv.post('/api/auth/login').send({ username: 'kv.minh', password: 'Demo@12345' });
+    const sale = agent(); await sale.post('/api/auth/login').send({ username: 'sale.nam', password: 'Demo@12345' });
+    const of = (items: any[], kind: string, name: string) => items.find((i) => i.kind === kind && i.name === name);
+
+    const p = (await lt.post('/api/patients').send({ fullName: 'Nhắc Lịch Thử', birthYear: 1985, gender: 'FEMALE', phone: '0922333444', consent: true }).expect(201)).body;
+    const enc = (await lt.post('/api/encounters/check-in').send({ patientId: p.id }).expect(201)).body;
+    await doc.put(`/api/exams/by-encounter/${enc.id}`).send({ data: { reason: 'x', screening: { conclusion: 'ACCEPT' }, diagnosis: { modernMain: 'M54.2' } }, rev: 0 }).expect(200);
+    const plan = (await doc.post('/api/plans').send({ encounterId: enc.id, totalSessions: 5, frequency: '3 buổi/tuần', items: [{ serviceCode: 'CC' }] }).expect(201)).body;
+    const sess = (await kv.post(`/api/plans/${plan.id}/sessions`).send({ lines: [{ serviceCode: 'CC', minutes: 20 }] }).expect(201)).body;
+
+    // 1) chăm sóc sau điều trị: có lưu ý riêng cho châm cứu
+    let items = (await lt.get('/api/followups').expect(200)).body;
+    const ac = of(items, 'AFTERCARE', 'Nhắc Lịch Thử');
+    expect(ac.message).toContain('Nhắc Lịch Thử'); expect(ac.message).toContain('1/5'); expect(ac.message).toContain('châm cứu');
+    await lt.post('/api/followups/log').send({ kind: 'AFTERCARE', key: sess.id, patientId: p.id, channel: 'ZALO', outcome: 'SENT' }).expect(201);
+    items = (await lt.get('/api/followups').expect(200)).body;
+    expect(of(items, 'AFTERCARE', 'Nhắc Lịch Thử')).toBeUndefined();                  // đã nhắc → ẩn
+
+    // 2) buổi gần nhất cách 4 ngày, tần suất 3 buổi/tuần (cách 2 ngày) → cần nhắc buổi tiếp theo
+    const ago = (n: number) => new Date(Date.now() - n * 86400000);
+    await db.treatmentSession.update({ where: { id: sess.id }, data: { date: ago(4), createdAt: ago(4) } });
+    await lt.patch(`/api/encounters/${enc.id}/status`).send({ status: 'DONE' });
+    items = (await lt.get('/api/followups').expect(200)).body;
+    const ns = of(items, 'NEXT_SESSION', 'Nhắc Lịch Thử');
+    expect(ns.message).toContain('1/5'); expect(ns.info).toContain('trễ 2 ngày');
+    await lt.post('/api/followups/log').send({ kind: 'NEXT_SESSION', key: plan.id, channel: 'CALL', outcome: 'NO_ANSWER' }).expect(201);
+    expect(of((await lt.get('/api/followups')).body, 'NEXT_SESSION', 'Nhắc Lịch Thử')).toBeUndefined(); // hoãn 1 ngày
+
+    // 3) quá 14 ngày → chuyển sang "lâu chưa quay lại"
+    await db.followUpLog.deleteMany({}); await db.treatmentSession.update({ where: { id: sess.id }, data: { date: ago(20) } });
+    items = (await lt.get('/api/followups')).body;
+    expect(of(items, 'NEXT_SESSION', 'Nhắc Lịch Thử')).toBeUndefined();
+    expect(of(items, 'LOST', 'Nhắc Lịch Thử').message).toContain('20 ngày');
+
+    // 4) đã có lịch hẹn tương lai → không nhắc nữa; lịch ngày mai → nhắc xác nhận
+    const tmr = new Date(Date.now() + 86400000); tmr.setUTCHours(3, 0, 0, 0); // 10:00 giờ VN
+    await lt.post('/api/appointments').send({ patientId: p.id, fullName: 'Nhắc Lịch Thử', phone: '0922333444', startAt: tmr.toISOString() }).expect(201);
+    items = (await lt.get('/api/followups')).body;
+    expect(of(items, 'LOST', 'Nhắc Lịch Thử')).toBeUndefined();
+    const at = of(items, 'APPT_TOMORROW', 'Nhắc Lịch Thử'); expect(at.message).toContain('10:00');
+
+    // 5) lead cũ: sale thấy, các loại khác sale không thấy / không ghi được
+    const lead = (await sale.post('/api/leads').send({ fullName: 'Lead Cũ', phone: '0977000111' }).expect(201)).body;
+    await db.lead.update({ where: { id: lead.id }, data: { createdAt: ago(3) } });
+    const sItems = (await sale.get('/api/followups').expect(200)).body;
+    expect(sItems.every((i: any) => i.kind === 'LEAD')).toBe(true); expect(of(sItems, 'LEAD', 'Lead Cũ')).toBeTruthy();
+    await sale.post('/api/followups/log').send({ kind: 'NEXT_SESSION', key: plan.id, channel: 'ZALO', outcome: 'SENT' }).expect(400);
+    await sale.post('/api/followups/log').send({ kind: 'LEAD', key: lead.id, channel: 'CALL', outcome: 'DECLINED' }).expect(201);
+    expect((await db.lead.findUnique({ where: { id: lead.id } }))!.status).toBe('LOST');
+    await kv.get('/api/followups').expect(403);                                          // KTV không dùng chức năng này
+
+    // 6) mẫu tin: quản lý sửa được, lễ tân không
+    await lt.put('/api/followups/templates/lead').send({ body: 'x'.repeat(10) }).expect(403);
   });
 
   it('khóa tài khoản sau 5 lần sai', async () => {

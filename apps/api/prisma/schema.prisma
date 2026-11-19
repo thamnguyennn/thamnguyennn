@@ -517,3 +517,28 @@ model Payment {
 
   invoice Invoice @relation(fields: [invoiceId], references: [id])
 }
+
+// ───────── Nhắc lịch & chăm sóc sau điều trị ─────────
+// Danh sách "cần nhắc" được tính từ dữ liệu; bảng này chỉ lưu việc nhân viên đã liên hệ.
+model FollowUpLog {
+  id         String   @id @default(uuid())
+  kind       String   // APPT_TOMORROW | NO_SHOW | NEXT_SESSION | LOST | AFTERCARE | LEAD
+  key        String   // id đối tượng: lịch hẹn / liệu trình / buổi điều trị / lead
+  patientId  String?
+  channel    String   // ZALO | CALL | SMS | OTHER
+  outcome    String   // SENT | REACHED | NO_ANSWER | BOOKED | DECLINED
+  note       String?
+  snoozeUntil DateTime
+  byId       String
+  at         DateTime @default(now())
+
+  @@index([kind, key])
+}
+
+model MessageTemplate {
+  key       String   @id // appt_tomorrow, next_session, aftercare_general, aftercare_CC...
+  title     String
+  body      String
+  updatedAt DateTime @updatedAt
+  updatedById String?
+}

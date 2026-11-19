@@ -34,7 +34,22 @@ const ICD = [
   ['G51.0', 'Liệt dây thần kinh VII (liệt Bell)'], ['I69.3', 'Di chứng nhồi máu não'], ['G44.2', 'Đau đầu căng thẳng'], ['G47.0', 'Mất ngủ'], ['R51', 'Đau đầu'],
 ];
 
+// Mẫu tin nhắn mặc định. Nội dung lưu ý chăm sóc cần BÁC SĨ duyệt trước khi dùng.
+const TEMPLATES: [string, string, string][] = [
+  ['appt_tomorrow', 'Nhắc lịch hẹn', 'Chào {ten}, {phongkham} nhắc lịch hẹn của anh/chị vào {gio} ngày {ngay}. Nếu cần đổi lịch, anh/chị vui lòng nhắn lại giúp phòng khám. Xin cảm ơn!'],
+  ['no_show', 'Khách chưa đến theo lịch', 'Chào {ten}, phòng khám chưa thấy anh/chị đến theo lịch hẹn {gio} ngày {ngay}. Anh/chị có cần sắp xếp lại lịch không ạ?'],
+  ['next_session', 'Nhắc buổi điều trị tiếp theo', 'Chào {ten}, anh/chị đã hoàn thành {da_dung}/{tong} buổi trong liệu trình. Phòng khám nhắc anh/chị sắp xếp buổi tiếp theo để đạt hiệu quả tốt nhất. Anh/chị tiện đến vào ngày nào ạ?'],
+  ['lost', 'Khách lâu chưa quay lại', 'Chào {ten}, đã {so_ngay} ngày phòng khám chưa gặp lại anh/chị, liệu trình còn {con_lai} buổi. Anh/chị có gặp khó khăn khi sắp xếp lịch không ạ? Phòng khám sẵn sàng hỗ trợ.'],
+  ['lead', 'Liên hệ lại khách mới', 'Chào {ten}, {phongkham} xin phép liên hệ lại về lịch khám anh/chị quan tâm. Anh/chị tiện đến phòng khám vào thời gian nào ạ?'],
+  ['aftercare_general', 'Lưu ý sau điều trị (chung)', 'Chào {ten}, cảm ơn anh/chị đã điều trị hôm nay (buổi {da_dung}/{tong}). Sau điều trị anh/chị nên uống đủ nước, nghỉ ngơi hợp lý, tránh vận động mạnh hoặc mang vác nặng trong 24 giờ. {luu_y_dich_vu}Nếu có dấu hiệu bất thường (đau tăng nhiều, sưng nóng đỏ, tê yếu, chóng mặt, khó thở), vui lòng liên hệ phòng khám ngay.'],
+  ['aftercare_CC', 'Lưu ý sau châm cứu', 'Sau châm cứu: giữ vùng châm sạch, khô trong vài giờ; tránh tắm nước lạnh và gió lùa. '],
+  ['aftercare_DDK', 'Lưu ý sau nắn chỉnh / di động khớp', 'Sau nắn chỉnh/di động khớp: có thể mỏi nhẹ trong 1–2 ngày, tránh xoay vặn mạnh vùng vừa điều trị. '],
+  ['aftercare_TLMM', 'Lưu ý sau trị liệu cơ – mô mềm', 'Sau trị liệu cơ–mô mềm: vùng điều trị có thể ê nhẹ trong 1–2 ngày. '],
+  ['aftercare_XK', 'Lưu ý sau sóng xung kích', 'Sau sóng xung kích: vùng điều trị có thể ê nhẹ trong 1–2 ngày. '],
+];
+
 async function main() {
+  for (const [key, title, body] of TEMPLATES) await prisma.messageTemplate.upsert({ where: { key }, create: { key, title, body }, update: {} });
   for (const [i, sv] of SERVICES.entries())
     await prisma.service.upsert({ where: { code: sv.code }, create: { ...sv, sortOrder: i }, update: {} });
   for (const [code, name] of ICD) await prisma.icd10.upsert({ where: { code }, create: { code, name }, update: {} });
